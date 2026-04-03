@@ -1,0 +1,41 @@
+@if (role === 'Manager') {
+  <div class="flex flex-wrap items-center gap-2 mb-4">
+    <span class="text-xs text-slate-500 uppercase tracking-wide">Périmètre</span>
+    <select
+      class="bg-navy-900 border border-navy-700 rounded-lg py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-blue-500"
+      [value]="drill.coachId ?? ''"
+      (change)="onCoachChange($any($event.target).value)"
+    >
+      <option value="">Coach</option>
+      @for (o of coaches; track o.value) {
+        <option [value]="o.value">{{ o.label }}</option>
+      }
+    </select>
+  </div>
+}
+@if (role === 'RP') {
+  <div class="flex flex-wrap items-center gap-2 mb-4">
+    <span class="text-xs text-slate-500 uppercase tracking-wide">Périmètre</span>
+    <select
+      class="bg-navy-900 border border-navy-700 rounded-lg py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-blue-500"
+      [value]="drill.managerId ?? ''"
+      (change)="onManagerChange($any($event.target).value)"
+    >
+      <option value="">Manager</option>
+      @for (o of managers; track o.value) {
+        <option [value]="o.value">{{ o.label }}</option>
+      }
+    </select>
+    <select
+      class="bg-navy-900 border border-navy-700 rounded-lg py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-blue-500 disabled:opacity-50"
+      [disabled]="!drill.managerId"
+      [value]="drill.coachId ?? ''"
+      (change)="onCoachChange($any($event.target).value)"
+    >
+      <option value="">Coach</option>
+      @for (o of coaches; track o.value) {
+        <option [value]="o.value">{{ o.label }}</option>
+      }
+    </select>
+  </div>
+}

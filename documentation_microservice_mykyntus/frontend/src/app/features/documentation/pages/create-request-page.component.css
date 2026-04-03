@@ -1,0 +1,83 @@
+h1 {
+  margin-top: 0;
+}
+
+.intro {
+  color: #475569;
+  max-width: 640px;
+}
+
+.muted {
+  color: #64748b;
+  font-size: 0.95rem;
+}
+
+.mode {
+  border: none;
+  padding: 0;
+  margin: 1rem 0;
+}
+
+.mode legend {
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+}
+
+.mode label {
+  margin-right: 1.25rem;
+  cursor: pointer;
+}
+
+.field {
+  margin-bottom: 1rem;
+}
+
+.field label {
+  display: block;
+  font-size: 0.875rem;
+  margin-bottom: 0.25rem;
+}
+
+.field select,
+.field textarea {
+  width: 100%;
+  max-width: 520px;
+  font: inherit;
+  padding: 0.45rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+}
+
+.submit {
+  margin-top: 0.5rem;
+  cursor: pointer;
+  padding: 0.55rem 1.2rem;
+  border-radius: 8px;
+  border: none;
+  background: #2563eb;
+  color: #fff;
+  font-weight: 600;
+}
+
+.submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.err {
+  color: #b91c1c;
+  margin-top: 1rem;
+}
+
+.ok {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: #ecfdf5;
+  border: 1px solid #6ee7b7;
+  border-radius: 8px;
+}
+
+.ok h2 {
+  margin-top: 0;
+  font-size: 1rem;
+}

@@ -1,0 +1,127 @@
+<header
+  class="h-20 px-8 flex items-center justify-between bg-navy-950/80 backdrop-blur-md border-b border-navy-800 sticky top-0 z-40 transition-colors duration-300"
+>
+  <div>
+    <h2 class="text-2xl font-bold text-white tracking-tight">{{ title }}</h2>
+  </div>
+  <div class="flex items-center gap-6">
+    <div class="relative group hidden md:block">
+      <app-doc-icon
+        name="search"
+        klass="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-blue-500 transition-colors"
+      ></app-doc-icon>
+      <input
+        type="text"
+        [placeholder]="app.t('header.search')"
+        class="bg-navy-900/50 border border-navy-800 rounded-full py-2 pl-10 pr-4 text-sm text-slate-300 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 w-64 transition-all placeholder:text-slate-600 shadow-inner"
+      />
+    </div>
+    <div class="flex items-center gap-3">
+      <button
+        type="button"
+        (click)="toggleTheme()"
+        class="p-2 text-slate-400 hover:text-white transition-colors rounded-full hover:bg-navy-800"
+        title="Basculer le thème clair ou sombre"
+      >
+        @if (isDark) {
+          <app-doc-icon name="sun" klass="w-5 h-5"></app-doc-icon>
+        } @else {
+          <app-doc-icon name="moon" klass="w-5 h-5"></app-doc-icon>
+        }
+      </button>
+
+      <div class="relative">
+        <button
+          type="button"
+          (click)="toggleNotifications()"
+          class="relative p-2 text-slate-400 hover:text-white transition-colors rounded-full hover:bg-navy-800"
+        >
+          <app-doc-icon name="bell" klass="w-5 h-5"></app-doc-icon>
+          @if (unread$ | async; as c) {
+            @if (c > 0) {
+              <span
+                class="absolute top-1.5 right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-blue-500/20 text-blue-400 text-[10px] font-bold border border-blue-500/30 flex items-center justify-center"
+              >
+                {{ c }}
+              </span>
+            }
+          }
+        </button>
+        @if (notificationOpen) {
+          <div class="absolute right-0 top-12 z-50 w-96 card-navy">
+            <div class="px-4 py-3 border-b border-navy-800 flex items-center justify-between">
+              <span class="text-sm font-semibold text-white">Notifications</span>
+              <button
+                type="button"
+                (click)="markAllReadFromDropdown()"
+                class="text-xs text-blue-400 hover:text-blue-300 font-medium"
+              >
+                Mark all as read
+              </button>
+            </div>
+            <div class="max-h-80 overflow-y-auto divide-y divide-navy-800">
+              @if (notifications.list().length === 0) {
+                <div class="px-4 py-6 text-sm text-slate-400 text-center">No notifications</div>
+              } @else {
+                @for (n of notifications.list().slice(0, 6); track n.id) {
+                  <div class="px-4 py-3 hover:bg-navy-800/50">
+                    <div class="flex items-start gap-3">
+                      <div
+                        class="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+                        [ngClass]="n.bgColor"
+                      >
+                        <app-doc-icon [name]="n.icon" [klass]="'w-4 h-4 ' + n.iconColor"></app-doc-icon>
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <p [class]="n.read ? 'text-sm text-slate-300' : 'text-sm text-white font-medium'">
+                          {{ n.title }}
+                        </p>
+                        <p class="text-xs text-slate-500 mt-1 line-clamp-2">{{ n.description }}</p>
+                        <p class="text-[11px] text-slate-600 mt-1">{{ n.timestamp }}</p>
+                      </div>
+                    </div>
+                  </div>
+                }
+              }
+            </div>
+            <div class="px-4 py-3 border-t border-navy-800">
+              <button
+                type="button"
+                (click)="openAllNotifications()"
+                class="text-sm text-blue-400 hover:text-blue-300 font-medium"
+              >
+                Open notification center
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+      <button
+        type="button"
+        (click)="goSettings()"
+        class="p-2 text-slate-400 hover:text-white transition-colors rounded-full hover:bg-navy-800"
+      >
+        <app-doc-icon name="settings" klass="w-5 h-5"></app-doc-icon>
+      </button>
+      <div class="w-px h-6 bg-navy-800 mx-1"></div>
+      <button type="button" class="flex items-center gap-3 pl-2 group">
+        <div class="text-right hidden md:block">
+          @if (profile$ | async; as prof) {
+            <p class="text-sm font-bold text-white leading-none group-hover:text-blue-400 transition-colors">
+              {{ displayName(prof) }}
+            </p>
+            <p class="text-[10px] text-slate-500 font-medium mt-1">{{ prof.email }}</p>
+          } @else {
+            <p class="text-sm font-bold text-white leading-none">—</p>
+            <p class="text-[10px] text-slate-500 font-medium mt-1">Profil…</p>
+          }
+        </div>
+        <div
+          class="w-9 h-9 rounded-full bg-gradient-to-tr from-blue-600 to-electric-blue flex items-center justify-center text-white font-bold text-xs shadow-[0_0_10px_rgba(37,99,235,0.3)] border border-blue-500/30 group-hover:shadow-[0_0_15px_rgba(37,99,235,0.5)] transition-all"
+        >
+          {{ avatarInitials((profile$ | async) ?? null) }}
+        </div>
+      </button>
+    </div>
+  </div>
+</header>

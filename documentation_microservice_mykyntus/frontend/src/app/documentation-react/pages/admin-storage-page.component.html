@@ -1,0 +1,157 @@
+@if (role$ | async; as role) {
+  @if (!isAdmin(role)) {
+    <app-admin-shell title="Storage Configuration" description="Accès refusé pour ce rôle." iconName="hard-drive">
+      <div class="card-navy p-6">
+        <p class="text-slate-300">Seul le rôle `Admin` peut modifier la configuration de stockage.</p>
+      </div>
+    </app-admin-shell>
+  } @else if (loading || !draft) {
+    <app-admin-shell title="Storage Configuration" description="Chargement de la configuration…" iconName="hard-drive">
+      <div class="card-navy p-6">
+        <p class="text-slate-300">Veuillez patienter.</p>
+      </div>
+    </app-admin-shell>
+  } @else {
+    <app-admin-shell
+      title="Configuration du stockage"
+      description="Définissez le type de stockage (Local/Cloud), les endpoints et les options DMS"
+      iconName="hard-drive"
+    >
+      <div class="card-navy p-6 space-y-6">
+        @if (successMessage) {
+          <div class="px-4 py-3 rounded-lg bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+            {{ successMessage }}
+          </div>
+        }
+
+        <div class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+          <div>
+            <h4 class="text-white font-bold text-lg">{{ draft.storageType }} storage</h4>
+            <p class="text-sm text-slate-500 mt-1">Les secrets sont stockés côté service, affichés masqués en UI.</p>
+          </div>
+          <div class="flex gap-3 flex-wrap">
+            <button
+              type="button"
+              (click)="onSave()"
+              [disabled]="saving"
+              class="px-6 py-3 rounded-lg font-bold text-white transition-all"
+              [ngClass]="
+                saving ? 'bg-slate-600 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-600/20'
+              "
+            >
+              {{ saving ? 'Sauvegarde…' : 'Sauvegarder' }}
+            </button>
+            <button
+              type="button"
+              (click)="onReset()"
+              [disabled]="saving"
+              class="px-6 py-3 rounded-lg font-bold text-slate-200 border border-navy-800 hover:bg-navy-800/50 transition-all"
+            >
+              Réinitialiser
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div class="space-y-4">
+            <div>
+              <label class="text-sm font-semibold text-white">Type de stockage</label>
+              <select
+                [ngModel]="draft.storageType"
+                (ngModelChange)="onStorageTypeChange($event)"
+                class="mt-2 w-full bg-navy-800 border border-navy-700 rounded-lg p-3 text-sm text-slate-200 outline-none focus:border-blue-500"
+              >
+                @for (t of storageTypes; track t) {
+                  <option [value]="t">{{ t }}</option>
+                }
+              </select>
+            </div>
+
+            <div>
+              <label class="text-sm font-semibold text-white">URL API</label>
+              <input
+                [(ngModel)]="draft.apiUrl"
+                class="mt-2 w-full bg-navy-800 border border-navy-700 rounded-lg p-3 text-sm text-slate-200 outline-none focus:border-blue-500"
+              />
+              @if (errors['apiUrl']) {
+                <p class="text-xs text-red-400 mt-1">{{ errors['apiUrl'] }}</p>
+              }
+            </div>
+
+            <div>
+              <label class="text-sm font-semibold text-white">Nom du bucket</label>
+              <input
+                [(ngModel)]="draft.bucketName"
+                [disabled]="draft.storageType !== 'Cloud'"
+                class="mt-2 w-full bg-navy-800 border border-navy-700 rounded-lg p-3 text-sm text-slate-200 outline-none focus:border-blue-500 disabled:opacity-60"
+              />
+              @if (errors['bucketName']) {
+                <p class="text-xs text-red-400 mt-1">{{ errors['bucketName'] }}</p>
+              }
+            </div>
+
+            <div>
+              <label class="text-sm font-semibold text-white">Région</label>
+              <input
+                [(ngModel)]="draft.region"
+                [disabled]="draft.storageType !== 'Cloud'"
+                class="mt-2 w-full bg-navy-800 border border-navy-700 rounded-lg p-3 text-sm text-slate-200 outline-none focus:border-blue-500 disabled:opacity-60"
+              />
+              @if (errors['region']) {
+                <p class="text-xs text-red-400 mt-1">{{ errors['region'] }}</p>
+              }
+            </div>
+          </div>
+
+          <div class="space-y-4">
+            <div class="border border-navy-800 rounded-xl p-4 bg-navy-900/30">
+              <h4 class="text-sm font-bold text-white">Clé d’accès</h4>
+              <p class="text-xs text-slate-500 mt-1">Affichage masqué en UI. Pour remplacer le secret, saisissez une nouvelle valeur.</p>
+
+              <div class="mt-4 flex items-center justify-between gap-4">
+                <div class="text-sm text-slate-200">
+                  Secret actuel:
+                  <span class="font-mono text-slate-100">{{ revealKey ? draft.accessKey : maskedKey }}</span>
+                </div>
+                <button
+                  type="button"
+                  (click)="toggleReveal()"
+                  class="px-3 py-2 text-xs font-semibold text-blue-500 hover:text-blue-400 border border-blue-500/20 hover:bg-blue-500/10 rounded-lg transition-all"
+                >
+                  {{ revealKey ? 'Masquer' : 'Révéler' }}
+                </button>
+              </div>
+
+              <div class="mt-4">
+                <label class="text-sm font-semibold text-white">Nouveau secret (optionnel)</label>
+                <input
+                  type="password"
+                  [(ngModel)]="accessKeyInput"
+                  placeholder="******"
+                  class="mt-2 w-full bg-navy-800 border border-navy-700 rounded-lg p-3 text-sm text-slate-200 outline-none focus:border-blue-500"
+                />
+                <p class="text-xs text-slate-500 mt-1">Laisser vide conserve la valeur actuelle.</p>
+              </div>
+            </div>
+
+            <div class="border border-navy-800 rounded-xl p-4">
+              <h4 class="text-sm font-bold text-white mb-3">Options</h4>
+              <div class="space-y-3">
+                <app-admin-toggle
+                  [checked]="draft.backupEnabled"
+                  (checkedChange)="patchDraft({ backupEnabled: $event })"
+                  label="Activer backup"
+                ></app-admin-toggle>
+                <app-admin-toggle
+                  [checked]="draft.compressionEnabled"
+                  (checkedChange)="patchDraft({ compressionEnabled: $event })"
+                  label="Activer compression"
+                ></app-admin-toggle>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </app-admin-shell>
+  }
+}

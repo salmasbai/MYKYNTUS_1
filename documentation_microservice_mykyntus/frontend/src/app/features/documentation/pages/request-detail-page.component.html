@@ -1,0 +1,26 @@
+<h1>Détail demande</h1>
+<p *ngIf="loading">Chargement…</p>
+<p *ngIf="error" class="err">{{ error }}</p>
+
+<article class="card" *ngIf="request && !loading">
+  <header>
+    <h2>{{ request.id }}</h2>
+    <p class="status">{{ request.status }}</p>
+  </header>
+  <dl>
+    <dt>Type</dt>
+    <dd>{{ request.type }}</dd>
+    <dt>Date</dt>
+    <dd>{{ request.requestDate }}</dd>
+    <dt>Employé / demandeur</dt>
+    <dd>{{ request.employeeName }}</dd>
+    <dt>Motif</dt>
+    <dd>{{ request.reason || '—' }}</dd>
+    <dt *ngIf="request.decidedAt">Décision</dt>
+    <dd *ngIf="request.decidedAt">{{ request.decidedAt }}</dd>
+    <dt *ngIf="request.rejectionReason">Motif de rejet</dt>
+    <dd *ngIf="request.rejectionReason" class="rej">{{ request.rejectionReason }}</dd>
+  </dl>
+
+  <app-workflow-action-bar [request]="request" (requestUpdated)="onRequestUpdated($event)" />
+</article>

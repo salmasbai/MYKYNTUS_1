@@ -1,0 +1,35 @@
+<div class="shell">
+  <aside class="side">
+    <div class="brand">Documentation</div>
+    <p class="ctx">
+      Contexte injecté par la gateway (en-têtes) — ce front ne fait qu’appliquer la même convention en local :
+      <br />
+      <code>{{ headers.userId }}</code> ,
+      <code>{{ headers.userRole }}</code> ,
+      <code>{{ headers.tenantId }}</code> ,
+      <code>{{ headers.correlationId }}</code> (généré par requête)
+      <br />
+      <span class="hint">Voir <code>environment.documentationUserContextHeaders</code> pour la simulation.</span>
+    </p>
+    <nav>
+      <a routerLink="dashboard" routerLinkActive="active">Tableau de bord</a>
+      <a routerLink="types" routerLinkActive="active">Types de documents</a>
+      <a routerLink="requests" routerLinkActive="active">Demandes</a>
+      <a routerLink="requests/new" routerLinkActive="active">Nouvelle demande</a>
+      <a routerLink="audit" routerLinkActive="active">Journal d’audit</a>
+    </nav>
+  </aside>
+  <main class="main">
+    <div
+      class="toast"
+      *ngIf="toast"
+      [class.toast-error]="toast.kind === 'error'"
+      [class.toast-success]="toast.kind === 'success'"
+      role="status"
+    >
+      <span class="toast-text">{{ toast.text }}</span>
+      <button type="button" class="toast-close" (click)="dismissToast()" aria-label="Fermer">×</button>
+    </div>
+    <router-outlet />
+  </main>
+</div>

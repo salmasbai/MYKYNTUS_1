@@ -1,0 +1,27 @@
+<label
+  class="flex items-center gap-3"
+  [class.opacity-60]="disabled"
+  [class.cursor-not-allowed]="disabled"
+  [class.cursor-pointer]="!disabled"
+  [attr.title]="titleAttr ?? null"
+>
+  <span class="relative inline-flex items-center">
+    <input
+      type="checkbox"
+      class="sr-only"
+      [checked]="checked"
+      [disabled]="disabled"
+      (change)="onChange($any($event.target).checked)"
+    />
+    <span class="w-11 h-6 rounded-full transition-colors" [class.bg-blue-600]="checked" [class.bg-navy-800]="!checked">
+      <span
+        class="absolute top-0 left-0 w-6 h-6 rounded-full bg-navy-900 border border-navy-800 transition-transform"
+        [class.translate-x-5]="checked"
+        [class.translate-x-0]="!checked"
+      ></span>
+    </span>
+  </span>
+  @if (label) {
+    <span class="text-sm text-slate-300">{{ label }}</span>
+  }
+</label>

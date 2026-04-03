@@ -1,0 +1,23 @@
+import { NgModule } from '@angular/core';
+import { RouterModule, Routes } from '@angular/router';
+
+const routes: Routes = [
+  { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
+  {
+    path: 'dashboard',
+    loadChildren: () =>
+      import('./documentation-react/documentation-react.module').then((m) => m.DocumentationReactModule),
+  },
+  {
+    path: 'documentation',
+    loadChildren: () =>
+      import('./features/documentation/documentation.module').then((m) => m.DocumentationModule),
+  },
+  { path: '**', redirectTo: 'dashboard' },
+];
+
+@NgModule({
+  imports: [RouterModule.forRoot(routes)],
+  exports: [RouterModule],
+})
+export class AppRoutingModule {}

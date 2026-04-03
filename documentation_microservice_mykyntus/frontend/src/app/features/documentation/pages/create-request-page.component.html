@@ -1,0 +1,46 @@
+<h1>Nouvelle demande</h1>
+<p class="intro">
+  Le formulaire envoie uniquement des faits au backend ; la validation « catalogue / Autre » est appliquée côté API.
+</p>
+
+<p *ngIf="typesLoading" class="muted">Chargement du catalogue…</p>
+
+<fieldset class="mode">
+  <legend>Type de saisie</legend>
+  <label><input type="radio" name="mode" [(ngModel)]="modes" value="catalog" /> Catalogue</label>
+  <label><input type="radio" name="mode" [(ngModel)]="modes" value="other" /> Autre</label>
+</fieldset>
+
+<div *ngIf="modes === 'catalog'" class="field">
+  <label for="dtype">Type catalogue</label>
+  <select id="dtype" [(ngModel)]="selectedTypeId" name="selectedTypeId" [disabled]="typesLoading">
+    <option *ngFor="let t of types" [value]="t.id">{{ t.name }} ({{ t.code }})</option>
+  </select>
+</div>
+
+<div *ngIf="modes === 'other'" class="field">
+  <label for="cdesc">Description du type de document</label>
+  <textarea id="cdesc" rows="3" [(ngModel)]="customDescription" name="customDescription"></textarea>
+</div>
+
+<div class="field">
+  <label for="reason">Motif</label>
+  <textarea id="reason" rows="2" [(ngModel)]="reason" name="reason"></textarea>
+</div>
+
+<div class="field">
+  <label for="com">Commentaires complémentaires</label>
+  <textarea id="com" rows="2" [(ngModel)]="comments" name="comments"></textarea>
+</div>
+
+<button type="button" class="submit" [disabled]="submitting || typesLoading" (click)="submit()">Soumettre</button>
+
+<p *ngIf="error" class="err">{{ error }}</p>
+
+<section *ngIf="created" class="ok">
+  <h2>Demande créée</h2>
+  <p>
+    Réf. <strong>{{ created.id }}</strong> — statut {{ created.status }}.
+    <a [routerLink]="['/documentation/requests', created.internalId]">Voir le détail</a>
+  </p>
+</section>

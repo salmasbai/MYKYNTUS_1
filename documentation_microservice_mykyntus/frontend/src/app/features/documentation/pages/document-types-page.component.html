@@ -1,0 +1,24 @@
+<h1>Types de documents</h1>
+<p *ngIf="loading">Chargement…</p>
+<p *ngIf="error" class="err">{{ error }}</p>
+
+<table *ngIf="!loading && !error" class="table">
+  <thead>
+    <tr>
+      <th>Code</th>
+      <th>Nom</th>
+      <th>Département</th>
+      <th>Rétention (j)</th>
+      <th>Obligatoire</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr *ngFor="let t of types">
+      <td><code>{{ t.code }}</code></td>
+      <td>{{ t.name }}</td>
+      <td>{{ t.department }}</td>
+      <td>{{ t.retentionDays }}</td>
+      <td>{{ t.mandatory ? 'oui' : 'non' }}</td>
+    </tr>
+  </tbody>
+</table>

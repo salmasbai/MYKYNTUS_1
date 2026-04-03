@@ -1,0 +1,83 @@
+.dashboard-root {
+  padding: 16px;
+  font-family: Arial, sans-serif;
+}
+
+.subtitle {
+  color: #475569;
+  margin-top: 4px;
+}
+
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin: 16px 0;
+}
+
+.tabs button {
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #0f172a;
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.tabs button.active {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+  color: #ffffff;
+}
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.kpi-card {
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 10px;
+  background: #ffffff;
+}
+
+.kpi-card h3 {
+  margin: 0 0 6px;
+  font-size: 13px;
+  color: #334155;
+}
+
+.kpi-card strong {
+  font-size: 22px;
+  color: #0f172a;
+}
+
+.table-card {
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #ffffff;
+  padding: 12px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  text-align: left;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 8px;
+  font-size: 13px;
+}
+
+.loading,
+.empty {
+  border: 1px dashed #94a3b8;
+  border-radius: 10px;
+  padding: 14px;
+  color: #334155;
+}

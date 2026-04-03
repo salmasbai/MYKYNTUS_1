@@ -1,0 +1,16 @@
+{
+  "version": 2,
+  "dgSpecHash": "454mvywHc6c=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\saLMa.essbai\\Downloads\\MyKyntus_version_actuel\\MyKyntus_V14\\documentation_microservice_mykyntus\\backend\\DocumentationBackend\\DocumentationBackend.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\saLMa.essbai\\.nuget\\packages\\efcore.namingconventions\\10.0.1\\efcore.namingconventions.10.0.1.nupkg.sha512",
+    "C:\\Users\\saLMa.essbai\\.nuget\\packages\\microsoft.entityframeworkcore\\10.0.4\\microsoft.entityframeworkcore.10.0.4.nupkg.sha512",
+    "C:\\Users\\saLMa.essbai\\.nuget\\packages\\microsoft.entityframeworkcore.abstractions\\10.0.4\\microsoft.entityframeworkcore.abstractions.10.0.4.nupkg.sha512",
+    "C:\\Users\\saLMa.essbai\\.nuget\\packages\\microsoft.entityframeworkcore.analyzers\\10.0.4\\microsoft.entityframeworkcore.analyzers.10.0.4.nupkg.sha512",
+    "C:\\Users\\saLMa.essbai\\.nuget\\packages\\microsoft.entityframeworkcore.relational\\10.0.4\\microsoft.entityframeworkcore.relational.10.0.4.nupkg.sha512",
+    "C:\\Users\\saLMa.essbai\\.nuget\\packages\\npgsql\\10.0.2\\npgsql.10.0.2.nupkg.sha512",
+    "C:\\Users\\saLMa.essbai\\.nuget\\packages\\npgsql.entityframeworkcore.postgresql\\10.0.1\\npgsql.entityframeworkcore.postgresql.10.0.1.nupkg.sha512"
+  ],
+  "logs": []
+}

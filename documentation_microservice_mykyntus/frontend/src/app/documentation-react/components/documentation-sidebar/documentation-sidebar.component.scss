@@ -1,0 +1,25 @@
+.menu-item {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 2.75rem;
+}
+
+.active {
+  background-color: rgba(37, 99, 235, 0.15);
+  color: rgb(96 165 250);
+  border-width: 1px;
+  border-style: solid;
+  border-color: rgba(59, 130, 246, 0.4);
+  box-shadow:
+    0 0 0 1px rgba(59, 130, 246, 0.3),
+    0 0 14px rgba(37, 99, 235, 0.18);
+}
+
+.nav-idle {
+  border: 1px solid transparent;
+  color: rgb(148 163 184);
+}
+.nav-idle:hover {
+  background-color: rgb(17 34 64);
+  color: rgb(226 232 240);
+}

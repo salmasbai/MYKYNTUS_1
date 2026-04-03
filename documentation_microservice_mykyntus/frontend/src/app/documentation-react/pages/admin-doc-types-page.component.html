@@ -1,0 +1,220 @@
+@if (role$ | async; as role) {
+  @if (!isAdmin(role)) {
+    <app-admin-shell title="Document Types" description="Accès refusé pour ce rôle." iconName="layers">
+      <div class="card-navy p-6">
+        <p class="text-slate-300">Seul le rôle `Admin` peut gérer les types de documents.</p>
+      </div>
+    </app-admin-shell>
+  } @else if (loading) {
+    <app-admin-shell title="Document Types" description="Chargement des types…" iconName="layers">
+      <div class="card-navy p-6">
+        <p class="text-slate-300">Veuillez patienter.</p>
+      </div>
+    </app-admin-shell>
+  } @else {
+    <app-admin-shell
+      title="Gestion des types de documents"
+      description="CRUD complet, association au workflow et règles d’obligation"
+      iconName="layers"
+    >
+      <div class="card-navy p-6 space-y-6">
+        @if (successMessage) {
+          <div class="px-4 py-3 rounded-lg bg-blue-500/10 text-blue-200 border border-blue-500/20">
+            {{ successMessage }}
+          </div>
+        }
+
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div>
+            <h4 class="text-white font-bold text-lg">Types configurés</h4>
+            <p class="text-sm text-slate-500 mt-1">Définissez vos catégories et leurs politiques de conservation.</p>
+          </div>
+          <button
+            type="button"
+            (click)="openCreate()"
+            class="flex items-center gap-2 px-4 py-2 bg-blue-600 rounded-lg text-sm font-semibold text-white hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20"
+          >
+            <app-doc-icon name="plus-circle" klass="w-4 h-4"></app-doc-icon>
+            Ajouter un type
+          </button>
+        </div>
+
+        <div class="card-navy p-0 overflow-hidden border border-navy-800">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-navy-800/40 border-b border-navy-800">
+                <th class="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Nom</th>
+                <th class="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Code</th>
+                <th class="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Département</th>
+                <th class="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Durée (jours)</th>
+                <th class="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Workflow</th>
+                <th class="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Obligatoire</th>
+                <th class="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-right">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-navy-800">
+              @for (dt of docTypes; track dt.id) {
+                <tr class="hover:bg-navy-800/20 transition-colors">
+                  <td class="px-6 py-4">
+                    <div class="text-sm font-semibold text-slate-200">{{ dt.name }}</div>
+                    @if (dt.description) {
+                      <div class="text-xs text-slate-500 mt-1">{{ dt.description }}</div>
+                    }
+                  </td>
+                  <td class="px-6 py-4 text-sm text-slate-300 font-mono">{{ dt.code }}</td>
+                  <td class="px-6 py-4 text-sm text-slate-300">{{ dt.department }}</td>
+                  <td class="px-6 py-4 text-sm text-slate-300">{{ dt.retentionDays }}</td>
+                  <td class="px-6 py-4 text-sm text-slate-300">{{ workflowLabel(dt.workflowId) }}</td>
+                  <td class="px-6 py-4">
+                    <span
+                      class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold border"
+                      [ngClass]="
+                        dt.mandatory
+                          ? 'bg-blue-500/10 text-blue-300 border-blue-500/20'
+                          : 'bg-slate-500/10 text-slate-300 border-slate-500/20'
+                      "
+                    >
+                      {{ maskBoolean(dt.mandatory) }}
+                    </span>
+                  </td>
+                  <td class="px-6 py-4 text-right">
+                    <div class="flex items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        (click)="openEdit(dt)"
+                        class="p-2 text-slate-400 hover:text-white hover:bg-navy-800 rounded-lg transition-colors"
+                        title="Modifier"
+                      >
+                        <app-doc-icon name="edit" klass="w-4 h-4"></app-doc-icon>
+                      </button>
+                      <button
+                        type="button"
+                        (click)="onDelete(dt.id)"
+                        class="p-2 text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                        title="Supprimer"
+                      >
+                        <app-doc-icon name="trash-2" klass="w-4 h-4"></app-doc-icon>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              }
+              @if (docTypes.length === 0) {
+                <tr>
+                  <td colspan="7" class="px-6 py-10 text-center text-slate-500">Aucun type de document configuré.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <app-admin-modal
+        [open]="modalOpen"
+        [title]="modalMode === 'create' ? 'Ajouter un type de document' : 'Modifier le type de document'"
+        description="CRUD complet avec association au workflow et règle d’obligation."
+        (close)="closeModal()"
+      >
+        <div modalBody class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="text-sm font-semibold text-white">Nom</label>
+            <input
+              [(ngModel)]="form.name"
+              class="mt-2 w-full bg-navy-800 border border-navy-700 rounded-lg p-3 text-sm text-slate-200 outline-none focus:border-blue-500"
+            />
+            @if (formErrors['name']) {
+              <p class="text-xs text-red-400 mt-1">{{ formErrors['name'] }}</p>
+            }
+          </div>
+          <div>
+            <label class="text-sm font-semibold text-white">Code</label>
+            <input
+              [ngModel]="form.code"
+              (ngModelChange)="onCodeInput($event)"
+              class="mt-2 w-full bg-navy-800 border border-navy-700 rounded-lg p-3 text-sm text-slate-200 outline-none focus:border-blue-500"
+            />
+            @if (formErrors['code']) {
+              <p class="text-xs text-red-400 mt-1">{{ formErrors['code'] }}</p>
+            }
+          </div>
+          <div class="md:col-span-2">
+            <label class="text-sm font-semibold text-white">Description</label>
+            <textarea
+              [(ngModel)]="form.description"
+              rows="3"
+              class="mt-2 w-full bg-navy-800 border border-navy-700 rounded-lg p-3 text-sm text-slate-200 outline-none focus:border-blue-500 resize-none"
+            ></textarea>
+          </div>
+          <div>
+            <label class="text-sm font-semibold text-white">Département</label>
+            <input
+              [(ngModel)]="form.department"
+              class="mt-2 w-full bg-navy-800 border border-navy-700 rounded-lg p-3 text-sm text-slate-200 outline-none focus:border-blue-500"
+            />
+            @if (formErrors['department']) {
+              <p class="text-xs text-red-400 mt-1">{{ formErrors['department'] }}</p>
+            }
+          </div>
+          <div>
+            <label class="text-sm font-semibold text-white">Durée de conservation (jours)</label>
+            <input
+              type="number"
+              min="0"
+              [(ngModel)]="form.retentionDays"
+              class="mt-2 w-full bg-navy-800 border border-navy-700 rounded-lg p-3 text-sm text-slate-200 outline-none focus:border-blue-500"
+            />
+            @if (formErrors['retentionDays']) {
+              <p class="text-xs text-red-400 mt-1">{{ formErrors['retentionDays'] }}</p>
+            }
+          </div>
+          <div>
+            <label class="text-sm font-semibold text-white">Workflow associé</label>
+            <select
+              [(ngModel)]="form.workflowId"
+              class="mt-2 w-full bg-navy-800 border border-navy-700 rounded-lg p-3 text-sm text-slate-200 outline-none focus:border-blue-500"
+            >
+              @for (w of workflows; track w.id) {
+                <option [value]="w.id">{{ w.name }}</option>
+              }
+            </select>
+            @if (formErrors['workflowId']) {
+              <p class="text-xs text-red-400 mt-1">{{ formErrors['workflowId'] }}</p>
+            }
+          </div>
+          <div class="md:col-span-1">
+            <div class="mt-8">
+              <app-admin-toggle
+                [checked]="form.mandatory"
+                (checkedChange)="patchForm({ mandatory: $event })"
+                label="Obligatoire"
+              ></app-admin-toggle>
+            </div>
+          </div>
+        </div>
+        <div modalFooter class="flex flex-col sm:flex-row justify-end gap-3">
+          <button
+            type="button"
+            (click)="closeModal()"
+            class="px-6 py-3 rounded-lg font-bold text-slate-200 border border-navy-800 hover:bg-navy-800/50 transition-all"
+            [disabled]="saving"
+          >
+            Annuler
+          </button>
+          <button
+            type="button"
+            (click)="onSubmit()"
+            class="px-6 py-3 rounded-lg font-bold text-white transition-all"
+            [ngClass]="
+              saving ? 'bg-slate-600 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-600/20'
+            "
+            [disabled]="saving"
+          >
+            {{ saving ? 'Sauvegarde…' : 'Sauvegarder' }}
+          </button>
+        </div>
+      </app-admin-modal>
+    </app-admin-shell>
+  }
+}

@@ -1,0 +1,56 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "documentation_microservice_mykyntus", "documentation_microservice_mykyntus", "{B9E85270-3F5A-5056-1F70-B412768C89DF}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "parrainage-microservice", "parrainage-microservice", "{E6A8BFAC-E408-3229-9915-D7A6A19373D5}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "prime_microservices_mykyntus", "prime_microservices_mykyntus", "{F8DACC24-01AB-9DBF-7D6B-E38B7346F9D8}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "backend", "backend", "{616DCDC9-089E-2C02-87A7-8195976B99F3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DocumentationBackend", "documentation_microservice_mykyntus\backend\DocumentationBackend\DocumentationBackend.csproj", "{056E97C2-9680-6FE7-7DC2-56AFCD125B15}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "backend", "backend", "{37C0FDDB-BAAB-DB13-6296-0E5A369864A2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ParrainageBackend", "parrainage-microservice\backend\ParrainageBackend\ParrainageBackend.csproj", "{E2F70509-9BCD-0F87-139F-2CFD31D06655}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "backend", "backend", "{AD729097-29B4-D89D-3742-450D198BCE53}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PrimeBackend", "prime_microservices_mykyntus\backend\PrimeBackend\PrimeBackend.csproj", "{A107C5BB-8D08-DC02-88FA-C8908AC48E4A}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{056E97C2-9680-6FE7-7DC2-56AFCD125B15}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{056E97C2-9680-6FE7-7DC2-56AFCD125B15}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{056E97C2-9680-6FE7-7DC2-56AFCD125B15}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{056E97C2-9680-6FE7-7DC2-56AFCD125B15}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E2F70509-9BCD-0F87-139F-2CFD31D06655}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E2F70509-9BCD-0F87-139F-2CFD31D06655}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E2F70509-9BCD-0F87-139F-2CFD31D06655}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E2F70509-9BCD-0F87-139F-2CFD31D06655}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A107C5BB-8D08-DC02-88FA-C8908AC48E4A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A107C5BB-8D08-DC02-88FA-C8908AC48E4A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A107C5BB-8D08-DC02-88FA-C8908AC48E4A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A107C5BB-8D08-DC02-88FA-C8908AC48E4A}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{616DCDC9-089E-2C02-87A7-8195976B99F3} = {B9E85270-3F5A-5056-1F70-B412768C89DF}
+		{056E97C2-9680-6FE7-7DC2-56AFCD125B15} = {616DCDC9-089E-2C02-87A7-8195976B99F3}
+		{37C0FDDB-BAAB-DB13-6296-0E5A369864A2} = {E6A8BFAC-E408-3229-9915-D7A6A19373D5}
+		{E2F70509-9BCD-0F87-139F-2CFD31D06655} = {37C0FDDB-BAAB-DB13-6296-0E5A369864A2}
+		{AD729097-29B4-D89D-3742-450D198BCE53} = {F8DACC24-01AB-9DBF-7D6B-E38B7346F9D8}
+		{A107C5BB-8D08-DC02-88FA-C8908AC48E4A} = {AD729097-29B4-D89D-3742-450D198BCE53}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {90581BE9-5176-435C-9144-1DB6330C4B47}
+	EndGlobalSection
+EndGlobal

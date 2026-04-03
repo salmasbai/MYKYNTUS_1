@@ -1,0 +1,193 @@
+@import "tailwindcss";
+
+@theme {
+  --color-navy-950: var(--navy-950);
+  --color-navy-900: var(--navy-900);
+  --color-navy-800: var(--navy-800);
+  --color-navy-700: var(--navy-700);
+  --color-electric-blue: var(--electric-blue);
+  --color-soft-blue: var(--soft-blue);
+
+  --color-blue-500: var(--blue-500);
+  --color-blue-600: var(--blue-600);
+
+  --color-slate-50: var(--slate-50);
+  --color-slate-200: var(--slate-200);
+  --color-slate-300: var(--slate-300);
+  --color-slate-400: var(--slate-400);
+  --color-slate-500: var(--slate-500);
+  --color-slate-600: var(--slate-600);
+  --color-white: var(--white);
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  :root {
+    /* Light Mode Variables */
+    --navy-950: #f8fafc; /* Light Gray (Secondary background for body) */
+    --navy-900: #ffffff; /* White (Primary background for Sidebar/Cards) */
+    --navy-800: #e2e8f0; /* Borders */
+    --navy-700: #f1f5f9; /* Hover states */
+    --electric-blue: #1e3a8a; /* Navy Blue (Primary accent) */
+    --soft-blue: #3b82f6; /* Soft Blue (Secondary accent) */
+
+    --blue-500: #3b82f6; /* Soft Blue for hover */
+    --blue-600: #1e3a8a; /* Navy Blue for primary buttons */
+
+    --slate-50: #0f172a;
+    --slate-200: #1e293b;
+    --slate-300: #334155;
+    --slate-400: #475569;
+    --slate-500: #64748b;
+    --slate-600: #94a3b8;
+    --white: #0f172a; /* Map white text to dark text in light mode */
+  }
+
+  .dark {
+    /* Dark Mode Variables */
+    --navy-950: #040b16; /* Dark Navy Blue */
+    --navy-900: #0a1526; /* Deep Blue */
+    --navy-800: #112240; /* Borders and Cards */
+    --navy-700: #1e3a66; /* Hover states */
+    --electric-blue: #00f0ff; /* Electric Blue Accent */
+    --soft-blue: #3b82f6;
+
+    --blue-500: #3b82f6;
+    --blue-600: #2563eb;
+
+    --slate-50: #f8fafc;
+    --slate-200: #e2e8f0;
+    --slate-300: #cbd5e1;
+    --slate-400: #94a3b8;
+    --slate-500: #64748b;
+    --slate-600: #475569;
+    --white: #ffffff;
+  }
+
+  body {
+    @apply bg-navy-950 text-slate-300 antialiased transition-colors duration-300;
+  }
+}
+
+/* High-level theme variables driven by body.theme-light / body.theme-dark */
+body.theme-light {
+  --bg-primary: #f8fafc;
+  --bg-sidebar: #ffffff;
+  --bg-card: #ffffff;
+  --bg-input: #f1f5f9;
+  --text-primary: #0f172a;
+  --text-muted: #64748b;
+  --border-color: #e2e8f0;
+}
+
+body.theme-dark {
+  --bg-primary: #040b16;
+  --bg-sidebar: #020617;
+  --bg-card: #0a1526;
+  --bg-input: #0a1526;
+  --text-primary: #e5e7eb;
+  --text-muted: #9ca3af;
+  --border-color: #112240;
+}
+
+.bg-app {
+  background-color: var(--bg-primary);
+}
+
+.bg-sidebar {
+  background-color: var(--bg-sidebar);
+}
+
+.bg-card {
+  background-color: var(--bg-card);
+}
+
+.bg-input {
+  background-color: var(--bg-input);
+}
+
+.text-primary {
+  color: var(--text-primary);
+}
+
+.text-muted {
+  color: var(--text-muted);
+}
+
+.border-default {
+  border-color: var(--border-color);
+}
+
+/* Light Mode Specific Overrides */
+:root h1,
+:root h2,
+:root h3,
+:root h4,
+:root h5,
+:root h6 {
+  color: var(--electric-blue) !important;
+}
+
+.dark h1,
+.dark h2,
+.dark h3,
+.dark h4,
+.dark h5,
+.dark h6 {
+  color: #ffffff !important;
+}
+
+:root .bg-blue-600,
+:root .bg-blue-600 .text-white,
+:root .bg-gradient-to-tr .text-white {
+  color: #ffffff !important;
+}
+
+:root nav button svg {
+  color: var(--electric-blue);
+}
+
+:root nav button.text-blue-500 svg {
+  color: var(--soft-blue) !important;
+}
+
+.dark nav button svg {
+  color: inherit;
+}
+
+.glass {
+  @apply bg-navy-900/50 backdrop-blur-md border border-navy-800;
+}
+
+.card-navy {
+  @apply bg-navy-900 border border-navy-800 rounded-xl shadow-sm transition-all duration-300;
+}
+
+.dark .card-navy {
+  @apply shadow-lg;
+}
+
+.dark .card-navy:hover {
+  @apply border-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.15)];
+}
+
+.card-navy:hover {
+  @apply border-soft-blue/30 shadow-md;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-navy-800 rounded-full;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-navy-700;
+}
+

@@ -1,0 +1,222 @@
+@if (role$ | async; as role) {
+  @if (!isAdmin(role)) {
+    <app-admin-shell
+      title="General Configuration"
+      description="Accès refusé pour ce rôle."
+      iconName="settings"
+    >
+      <div class="card-navy p-6">
+        <p class="text-slate-300">Seul l’utilisateur avec le rôle `Admin` peut modifier la configuration du DMS.</p>
+      </div>
+    </app-admin-shell>
+  } @else if (loading || !draft) {
+    <app-admin-shell title="General Configuration" description="Chargement de la configuration…" iconName="settings">
+      <div class="card-navy p-6">
+        <p class="text-slate-300">Veuillez patienter.</p>
+      </div>
+    </app-admin-shell>
+  } @else {
+    <app-admin-shell
+      title="Configuration générale"
+      description="Paramètres globaux du système documentaire"
+      iconName="settings"
+    >
+      <div class="card-navy p-6 space-y-6">
+        @if (successMessage) {
+          <div class="px-4 py-3 rounded-lg bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+            {{ successMessage }}
+          </div>
+        }
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div class="space-y-4">
+            <div>
+              <label class="text-sm font-semibold text-white">Nom du système documentaire</label>
+              <input
+                [ngModel]="draft.systemName"
+                (ngModelChange)="patchDraft({ systemName: $event })"
+                class="mt-2 w-full bg-navy-800 border border-navy-700 rounded-lg p-3 text-sm text-slate-200 outline-none focus:border-blue-500"
+              />
+              @if (errors['systemName']) {
+                <p class="text-xs text-red-400 mt-1">{{ errors['systemName'] }}</p>
+              }
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="text-sm font-semibold text-white">Langue par défaut</label>
+                <select
+                  [ngModel]="draft.defaultLanguage"
+                  (ngModelChange)="patchDraft({ defaultLanguage: $event })"
+                  class="mt-2 w-full bg-navy-800 border border-navy-700 rounded-lg p-3 text-sm text-slate-200 outline-none focus:border-blue-500"
+                >
+                  <option value="fr">fr</option>
+                  <option value="en">en</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-sm font-semibold text-white">Fuseau horaire</label>
+                <select
+                  [ngModel]="draft.defaultTimezone"
+                  (ngModelChange)="patchDraft({ defaultTimezone: $event })"
+                  class="mt-2 w-full bg-navy-800 border border-navy-700 rounded-lg p-3 text-sm text-slate-200 outline-none focus:border-blue-500"
+                >
+                  <option value="Europe/Paris">Europe/Paris</option>
+                  <option value="UTC">UTC</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="text-sm font-semibold text-white">Taille max (MB)</label>
+                <input
+                  type="number"
+                  min="1"
+                  [ngModel]="draft.maxFileSizeMB"
+                  (ngModelChange)="patchDraft({ maxFileSizeMB: num($event) })"
+                  class="mt-2 w-full bg-navy-800 border border-navy-700 rounded-lg p-3 text-sm text-slate-200 outline-none focus:border-blue-500"
+                />
+                @if (errors['maxFileSizeMB']) {
+                  <p class="text-xs text-red-400 mt-1">{{ errors['maxFileSizeMB'] }}</p>
+                }
+              </div>
+              <div>
+                <label class="text-sm font-semibold text-white">Types autorisés</label>
+                <input
+                  [(ngModel)]="allowedTypesText"
+                  placeholder="pdf, docx, png"
+                  class="mt-2 w-full bg-navy-800 border border-navy-700 rounded-lg p-3 text-sm text-slate-200 outline-none focus:border-blue-500"
+                />
+                @if (errors['allowedFileTypes']) {
+                  <p class="text-xs text-red-400 mt-1">{{ errors['allowedFileTypes'] }}</p>
+                }
+              </div>
+            </div>
+          </div>
+
+          <div class="space-y-4">
+            <div class="border border-navy-800 rounded-xl p-4">
+              <h4 class="text-sm font-bold text-white mb-3">Règles métier</h4>
+              <div class="space-y-3">
+                <app-admin-toggle
+                  [checked]="draft.versioningEnabled"
+                  (checkedChange)="patchDraft({ versioningEnabled: $event })"
+                  label="Activer le versioning"
+                ></app-admin-toggle>
+                <div>
+                  <label class="text-sm font-semibold text-white">Durée d’archivage automatique (jours)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    [ngModel]="draft.retentionDays"
+                    (ngModelChange)="patchDraft({ retentionDays: num($event) })"
+                    class="mt-2 w-full bg-navy-800 border border-navy-700 rounded-lg p-3 text-sm text-slate-200 outline-none focus:border-blue-500"
+                  />
+                  @if (errors['retentionDays']) {
+                    <p class="text-xs text-red-400 mt-1">{{ errors['retentionDays'] }}</p>
+                  }
+                </div>
+                <app-admin-toggle
+                  [checked]="draft.documentsMandatoryByType"
+                  (checkedChange)="patchDraft({ documentsMandatoryByType: $event })"
+                  label="Documents obligatoires par type"
+                  titleAttr="Lorsque désactivé, les documents ne sont plus requis automatiquement."
+                ></app-admin-toggle>
+                <app-admin-toggle
+                  [checked]="draft.autoNumberingEnabled"
+                  (checkedChange)="patchDraft({ autoNumberingEnabled: $event })"
+                  label="Numérotation automatique"
+                ></app-admin-toggle>
+                @if (draft.autoNumberingEnabled) {
+                  <div>
+                    <label class="text-sm font-semibold text-white">Motif de numérotation</label>
+                    <input
+                      [ngModel]="draft.numberingPattern"
+                      (ngModelChange)="patchDraft({ numberingPattern: $event })"
+                      class="mt-2 w-full bg-navy-800 border border-navy-700 rounded-lg p-3 text-sm text-slate-200 outline-none focus:border-blue-500"
+                    />
+                    @if (errors['numberingPattern']) {
+                      <p class="text-xs text-red-400 mt-1">{{ errors['numberingPattern'] }}</p>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+
+            <div class="border border-navy-800 rounded-xl p-4">
+              <h4 class="text-sm font-bold text-white mb-3">Sécurité & notifications</h4>
+              <div class="space-y-3">
+                <app-admin-toggle
+                  [checked]="draft.security.encryptionEnabled"
+                  (checkedChange)="patchSecurity({ encryptionEnabled: $event })"
+                  label="Chiffrement"
+                ></app-admin-toggle>
+                <app-admin-toggle
+                  [checked]="draft.security.externalSharingEnabled"
+                  (checkedChange)="patchSecurity({ externalSharingEnabled: $event })"
+                  label="Partage externe"
+                ></app-admin-toggle>
+                <app-admin-toggle
+                  [checked]="draft.security.electronicSignatureEnabled"
+                  (checkedChange)="patchSecurity({ electronicSignatureEnabled: $event })"
+                  label="Signature électronique"
+                ></app-admin-toggle>
+
+                <div class="border-t border-navy-800 pt-4"></div>
+
+                <app-admin-toggle
+                  [checked]="draft.notifications.emailOnUpload"
+                  (checkedChange)="patchNotifications({ emailOnUpload: $event })"
+                  label="Email lors upload"
+                ></app-admin-toggle>
+                <app-admin-toggle
+                  [checked]="draft.notifications.emailOnValidation"
+                  (checkedChange)="patchNotifications({ emailOnValidation: $event })"
+                  label="Email lors validation"
+                ></app-admin-toggle>
+                <app-admin-toggle
+                  [checked]="draft.notifications.emailOnRejection"
+                  (checkedChange)="patchNotifications({ emailOnRejection: $event })"
+                  label="Email lors rejet"
+                ></app-admin-toggle>
+                <app-admin-toggle
+                  [checked]="draft.notifications.reminderExpiredEnabled"
+                  (checkedChange)="patchNotifications({ reminderExpiredEnabled: $event })"
+                  label="Rappel documents expirés"
+                ></app-admin-toggle>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 pt-2">
+          <div class="flex gap-3 flex-wrap">
+            <button
+              type="button"
+              (click)="onSave()"
+              [disabled]="saving"
+              class="px-6 py-3 rounded-lg font-bold text-white transition-all"
+              [ngClass]="
+                saving ? 'bg-slate-600 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-600/20'
+              "
+            >
+              {{ saving ? 'Sauvegarde…' : 'Sauvegarder' }}
+            </button>
+            <button
+              type="button"
+              (click)="onReset()"
+              [disabled]="saving"
+              class="px-6 py-3 rounded-lg font-bold text-slate-200 border border-navy-800 hover:bg-navy-800/50 transition-all"
+            >
+              Réinitialiser
+            </button>
+          </div>
+          <div class="text-xs text-slate-500">
+            Les modifications sont enregistrées sur le service d’administration.
+          </div>
+        </div>
+      </div>
+    </app-admin-shell>
+  }
+}

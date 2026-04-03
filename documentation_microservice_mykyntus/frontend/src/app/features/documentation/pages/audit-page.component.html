@@ -1,0 +1,72 @@
+<h1>Journal d’audit</h1>
+
+<section class="filters">
+  <div class="filter-row">
+    <label>
+      Action (contient)
+      <input type="text" name="action" [(ngModel)]="actionContains" placeholder="ex. WORKFLOW" [disabled]="loading" />
+    </label>
+    <label>
+      Rôle acteur
+      <select name="role" [(ngModel)]="roleFilter" [disabled]="loading">
+        <option *ngFor="let o of roleOptions" [ngValue]="o.value">{{ o.label }}</option>
+      </select>
+    </label>
+  </div>
+  <div class="filter-row">
+    <label>
+      Tri
+      <select name="sortBy" [(ngModel)]="sortBy" [disabled]="loading">
+        <option *ngFor="let o of sortByOptions" [ngValue]="o.value">{{ o.label }}</option>
+      </select>
+    </label>
+    <label>
+      Ordre
+      <select name="sortOrder" [(ngModel)]="sortOrder" [disabled]="loading">
+        <option ngValue="desc">Décroissant</option>
+        <option ngValue="asc">Croissant</option>
+      </select>
+    </label>
+    <button type="button" class="btn primary" [disabled]="loading" (click)="applyFilters()">Appliquer</button>
+  </div>
+</section>
+
+<div class="pager" *ngIf="!loading && !error">
+  <button type="button" [disabled]="loading || page <= 1" (click)="previousPage()">Page précédente</button>
+  <span class="meta">Page {{ page }} / {{ totalPages }} · {{ totalCount }} ligne(s)</span>
+  <button type="button" [disabled]="loading || page >= totalPages" (click)="nextPage()">Page suivante</button>
+</div>
+
+<div class="pager goto" *ngIf="!loading && !error && totalPages > 1">
+  <label>
+    Aller à la page
+    <input type="number" name="pageInput" [(ngModel)]="pageInput" min="1" [max]="totalPages" [disabled]="loading" />
+  </label>
+  <button type="button" [disabled]="loading" (click)="goToPage()">OK</button>
+</div>
+
+<p *ngIf="loading">Chargement…</p>
+<p *ngIf="error" class="err">{{ error }}</p>
+
+<table *ngIf="!loading && !error" class="table">
+  <thead>
+    <tr>
+      <th>Date</th>
+      <th>Acteur</th>
+      <th>Action</th>
+      <th>Entité</th>
+      <th>Corrélation</th>
+      <th>Succès</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr *ngFor="let l of logs">
+      <td>{{ l.occurredAt | slice : 0 : 19 }}</td>
+      <td>{{ l.actorName || '—' }}</td>
+      <td><code>{{ l.action }}</code></td>
+      <td>{{ l.entityType }} {{ l.entityId || '' }}</td>
+      <td><code class="corr">{{ l.correlationId || '—' }}</code></td>
+      <td>{{ l.success === null ? '—' : l.success ? 'oui' : 'non' }}</td>
+    </tr>
+  </tbody>
+</table>

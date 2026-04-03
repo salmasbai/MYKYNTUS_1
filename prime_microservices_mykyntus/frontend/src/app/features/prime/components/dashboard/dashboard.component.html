@@ -1,0 +1,64 @@
+<div class="dashboard-root">
+  <h1>Dashboard Prime</h1>
+  <p class="subtitle">Version Angular uniquement (sans React)</p>
+
+  <div class="tabs">
+    <button type="button" [class.active]="section === 'journal'" (click)="setSection('journal')">Journal</button>
+    <button type="button" [class.active]="section === 'historique'" (click)="setSection('historique')">Historique</button>
+    <button type="button" [class.active]="section === 'reporting'" (click)="setSection('reporting')">Reporting</button>
+    <button type="button" [class.active]="section === 'anomalies'" (click)="setSection('anomalies')">Anomalies</button>
+  </div>
+
+  <ng-container *ngIf="!loading; else loadingTpl">
+    <div class="kpis" *ngIf="stats as s">
+      <article class="kpi-card">
+        <h3>Total événements</h3>
+        <strong>{{ s?.totalEvents ?? 0 }}</strong>
+      </article>
+      <article class="kpi-card">
+        <h3>Info</h3>
+        <strong>{{ s?.infoCount ?? 0 }}</strong>
+      </article>
+      <article class="kpi-card">
+        <h3>Warning</h3>
+        <strong>{{ s?.warningCount ?? 0 }}</strong>
+      </article>
+      <article class="kpi-card">
+        <h3>Critical</h3>
+        <strong>{{ s?.criticalCount ?? 0 }}</strong>
+      </article>
+    </div>
+
+    <section class="table-card">
+      <h2>{{ section | titlecase }}</h2>
+      <table *ngIf="logs?.length; else emptyTpl">
+        <thead>
+          <tr>
+            <th>Date/heure</th>
+            <th>Utilisateur</th>
+            <th>Action</th>
+            <th>Section</th>
+            <th>Statut</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let row of logs">
+            <td>{{ row?.datetime }}</td>
+            <td>{{ row?.user }}</td>
+            <td>{{ row?.action }}</td>
+            <td>{{ row?.section }}</td>
+            <td>{{ row?.status }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </ng-container>
+
+  <ng-template #loadingTpl>
+    <div class="loading">Chargement du dashboard...</div>
+  </ng-template>
+
+  <ng-template #emptyTpl>
+    <div class="empty">Aucune donnée disponible.</div>
+  </ng-template>
+</div>

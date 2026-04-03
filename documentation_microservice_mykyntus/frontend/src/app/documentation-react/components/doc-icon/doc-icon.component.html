@@ -1,0 +1,248 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+  [class]="klass"
+>
+  <ng-container [ngSwitch]="name">
+    <ng-container *ngSwitchCase="'layout-dashboard'">
+      <rect width="7" height="9" x="3" y="3" rx="1"></rect>
+      <rect width="7" height="5" x="14" y="3" rx="1"></rect>
+      <rect width="7" height="9" x="14" y="12" rx="1"></rect>
+      <rect width="7" height="5" x="3" y="16" rx="1"></rect>
+    </ng-container>
+    <ng-container style="display: contents" *ngSwitchCase="'file-text'">
+      <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path>
+      <path d="M14 2v4a2 2 0 0 0 2 2h4"></path>
+      <path d="M10 9H8"></path>
+      <path d="M16 13H8"></path>
+      <path d="M16 17H8"></path>
+    </ng-container>
+    <ng-container *ngSwitchCase="'plus-circle'">
+      <circle cx="12" cy="12" r="10"></circle>
+      <path d="M8 12h8"></path>
+      <path d="M12 8v8"></path>
+    </ng-container>
+    <ng-container *ngSwitchCase="'history'">
+      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+      <path d="M3 3v5h5"></path>
+      <path d="M12 7v5l4 2"></path>
+    </ng-container>
+    <ng-container *ngSwitchCase="'users'">
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+      <circle cx="9" cy="7" r="4"></circle>
+      <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+      <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+    </ng-container>
+    <ng-container *ngSwitchCase="'settings'">
+      <path
+        d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
+      ></path>
+      <circle cx="12" cy="12" r="3"></circle>
+    </ng-container>
+    <ng-container *ngSwitchCase="'shield-check'">
+      <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path>
+      <path d="m9 12 2 2 4-4"></path>
+    </ng-container>
+    <ng-container *ngSwitchCase="'log-out'">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+      <polyline points="16 17 21 12 16 7"></polyline>
+      <line x1="21" x2="9" y1="12" y2="12"></line>
+    </ng-container>
+    <ng-container *ngSwitchCase="'search'">
+      <circle cx="11" cy="11" r="8"></circle>
+      <path d="m21 21-4.3-4.3"></path>
+    </ng-container>
+    <ng-container *ngSwitchCase="'bell'">
+      <path d="M10.268 21a2 2 0 0 0 3.464 0"></path>
+      <path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path>
+    </ng-container>
+    <ng-container *ngSwitchCase="'download'">
+      <path d="M12 15V3"></path>
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+      <path d="m7 10 5 5 5-5"></path>
+    </ng-container>
+    <ng-container *ngSwitchCase="'eye'">
+      <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
+      <circle cx="12" cy="12" r="3"></circle>
+    </ng-container>
+    <ng-container *ngSwitchCase="'check-circle-2'">
+      <circle cx="12" cy="12" r="10"></circle>
+      <path d="m9 12 2 2 4-4"></path>
+    </ng-container>
+    <ng-container *ngSwitchCase="'clock'">
+      <circle cx="12" cy="12" r="10"></circle>
+      <polyline points="12 6 12 12 16 14"></polyline>
+    </ng-container>
+    <ng-container *ngSwitchCase="'x-circle'">
+      <circle cx="12" cy="12" r="10"></circle>
+      <path d="m15 9-6 6"></path>
+      <path d="m9 9 6 6"></path>
+    </ng-container>
+    <ng-container *ngSwitchCase="'filter'">
+      <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+    </ng-container>
+    <ng-container *ngSwitchCase="'chevron-right'">
+      <path d="m9 18 6-6-6-6"></path>
+    </ng-container>
+    <ng-container *ngSwitchCase="'user'">
+      <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
+      <circle cx="12" cy="7" r="4"></circle>
+    </ng-container>
+    <ng-container *ngSwitchCase="'clipboard-list'">
+      <rect width="8" height="4" x="8" y="2" rx="1" ry="1"></rect>
+      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+      <path d="M12 11h4"></path>
+      <path d="M12 16h4"></path>
+      <path d="M8 11h.01"></path>
+      <path d="M8 16h.01"></path>
+    </ng-container>
+    <ng-container *ngSwitchCase="'file-edit'">
+      <path d="M4 13.5V4a2 2 0 0 1 2-2h8.5L20 7.5V20a2 2 0 0 1-2 2h-7.5"></path>
+      <path d="M14 2v6h6"></path>
+      <path d="M10.4 12.6a2 2 0 1 1 3 3L8 21l-4 1 1-4Z"></path>
+    </ng-container>
+    <ng-container *ngSwitchCase="'menu'">
+      <line x1="4" x2="20" y1="12" y2="12"></line>
+      <line x1="4" x2="20" y1="6" y2="6"></line>
+      <line x1="4" x2="20" y1="18" y2="18"></line>
+    </ng-container>
+    <ng-container *ngSwitchCase="'chevron-left'">
+      <path d="m15 18-6-6 6-6"></path>
+    </ng-container>
+    <ng-container *ngSwitchCase="'sun'">
+      <circle cx="12" cy="12" r="4"></circle>
+      <path d="M12 2v2"></path>
+      <path d="M12 20v2"></path>
+      <path d="m4.93 4.93 1.41 1.41"></path>
+      <path d="m17.66 17.66 1.41 1.41"></path>
+      <path d="M2 12h2"></path>
+      <path d="M20 12h2"></path>
+      <path d="m6.34 17.66-1.41 1.41"></path>
+      <path d="m19.07 4.93-1.41 1.41"></path>
+    </ng-container>
+    <ng-container *ngSwitchCase="'moon'">
+      <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+    </ng-container>
+    <ng-container *ngSwitchCase="'shield'">
+      <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path>
+    </ng-container>
+    <ng-container *ngSwitchCase="'alert-triangle'">
+      <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
+      <path d="M12 9v4"></path>
+      <path d="M12 17h.01"></path>
+    </ng-container>
+    <ng-container *ngSwitchCase="'bar-chart'">
+      <path d="M3 3v18h18"></path>
+      <path d="M18 17V9"></path>
+      <path d="M13 17V5"></path>
+      <path d="M8 17v-3"></path>
+    </ng-container>
+    <ng-container *ngSwitchCase="'more-vertical'">
+      <circle cx="12" cy="12" r="1"></circle>
+      <circle cx="12" cy="5" r="1"></circle>
+      <circle cx="12" cy="19" r="1"></circle>
+    </ng-container>
+    <ng-container *ngSwitchCase="'layers'">
+      <polygon points="12.83 2.18 2 9.12 2 12.88 12.83 19.82 23.66 12.88 23.66 9.12 12.83 2.18"></polygon>
+      <polyline points="12.83 9.12 2 16.06 2 19.82 12.83 2.18 23.66 9.12 23.66 12.88 12.83 19.82"></polyline>
+    </ng-container>
+    <ng-container *ngSwitchCase="'lock'">
+      <rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect>
+      <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+    </ng-container>
+    <ng-container *ngSwitchCase="'git-branch'">
+      <line x1="6" x2="6" y1="3" y2="15"></line>
+      <circle cx="18" cy="6" r="3"></circle>
+      <circle cx="6" cy="18" r="3"></circle>
+      <path d="M18 9a9 9 0 0 1-9 9"></path>
+    </ng-container>
+    <ng-container *ngSwitchCase="'hard-drive'">
+      <line x1="22" x2="2" y1="12" y2="12"></line>
+      <path
+        d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"
+      ></path>
+      <line x1="6" x2="6.01" y1="16" y2="16"></line>
+      <line x1="10" x2="10.01" y1="16" y2="16"></line>
+    </ng-container>
+    <ng-container *ngSwitchCase="'activity'">
+      <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+    </ng-container>
+    <ng-container *ngSwitchCase="'file-up'">
+      <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path>
+      <path d="M14 2v4a2 2 0 0 0 2 2h4"></path>
+      <path d="M12 12v6"></path>
+      <path d="m9 15 3-3 3 3"></path>
+    </ng-container>
+    <ng-container *ngSwitchCase="'trash-2'">
+      <path d="M3 6h18"></path>
+      <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+      <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+      <line x1="10" x2="10" y1="11" y2="17"></line>
+      <line x1="14" x2="14" y1="11" y2="17"></line>
+    </ng-container>
+    <ng-container *ngSwitchCase="'database'">
+      <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
+      <path d="M3 5V19A9 3 0 0 0 21 19V5"></path>
+      <path d="M3 12A9 3 0 0 0 21 12"></path>
+    </ng-container>
+    <ng-container *ngSwitchCase="'clock-3'">
+      <circle cx="12" cy="12" r="10"></circle>
+      <polyline points="12 6 12 12 16.5 12"></polyline>
+    </ng-container>
+    <ng-container *ngSwitchCase="'refresh-ccw'">
+      <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
+      <path d="M21 3v5h-5"></path>
+      <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
+      <path d="M8 16H3v5"></path>
+    </ng-container>
+    <ng-container *ngSwitchCase="'inbox'">
+      <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline>
+      <path
+        d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"
+      ></path>
+    </ng-container>
+    <ng-container *ngSwitchCase="'scroll-text'">
+      <path d="M15 12h-5"></path>
+      <path d="M15 8h-5"></path>
+      <path d="M19 17V5a2 2 0 0 0-2-2H4"></path>
+      <path d="M15 16h-5"></path>
+      <path d="M15 20h-5"></path>
+      <path d="M19 20a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2h-1"></path>
+      <path d="M8 5v16"></path>
+    </ng-container>
+    <ng-container *ngSwitchCase="'x'">
+      <path d="M18 6 6 18"></path>
+      <path d="m6 6 12 12"></path>
+    </ng-container>
+    <ng-container *ngSwitchCase="'user-circle'">
+      <circle cx="12" cy="12" r="10"></circle>
+      <circle cx="12" cy="10" r="3"></circle>
+      <path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662"></path>
+    </ng-container>
+    <ng-container *ngSwitchCase="'bell-ring'">
+      <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path>
+      <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path>
+      <path d="M4 2C2.8 3.7 2 5.7 2 8"></path>
+      <path d="M22 8c0-2.3-.8-4.3-2-6"></path>
+    </ng-container>
+    <ng-container *ngSwitchCase="'edit'">
+      <path d="M12 20h9"></path>
+      <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path>
+    </ng-container>
+    <ng-container *ngSwitchCase="'documents'">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"></path>
+      <path d="M14 2v6h6"></path>
+      <path d="M16 13H8"></path>
+      <path d="M16 17H8"></path>
+      <path d="M10 9H8"></path>
+    </ng-container>
+    <circle *ngSwitchDefault cx="12" cy="12" r="2"></circle>
+  </ng-container>
+</svg>

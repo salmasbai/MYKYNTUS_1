@@ -1,0 +1,55 @@
+h1 {
+  margin-top: 0;
+}
+
+.err {
+  color: #b91c1c;
+}
+
+.card {
+  background: #fff;
+  border-radius: 10px;
+  padding: 1.25rem 1.5rem;
+  border: 1px solid #e2e8f0;
+  max-width: 720px;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+header h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.status {
+  margin: 0;
+  font-weight: 600;
+  color: #334155;
+}
+
+dl {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 0.5rem 1rem;
+  margin: 0 0 1rem;
+}
+
+dt {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+dd {
+  margin: 0;
+}
+
+.rej {
+  color: #b91c1c;
+}

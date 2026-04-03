@@ -1,0 +1,111 @@
+<div class="space-y-8">
+  @if (loading) {
+    <p class="text-slate-400 text-sm">Chargement des indicateurs…</p>
+  } @else if (error) {
+    <p class="text-rose-400 text-sm">{{ error }}</p>
+  }
+
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    @for (stat of stats; track stat.label; let i = $index) {
+      <div
+        class="card-navy p-6 flex items-center justify-between doc-animate-in"
+        [class.doc-stagger-0]="i === 0"
+        [class.doc-stagger-1]="i === 1"
+        [class.doc-stagger-2]="i === 2"
+        [class.doc-stagger-3]="i === 3"
+      >
+        <div>
+          <p class="text-sm text-slate-400 font-medium mb-1">{{ stat.label }}</p>
+          <h3 class="text-3xl font-bold text-white">{{ stat.value }}</h3>
+        </div>
+        <div class="w-12 h-12 rounded-xl flex items-center justify-center" [ngClass]="stat.bg">
+          <app-doc-icon [name]="stat.icon" [klass]="'w-6 h-6 ' + stat.color"></app-doc-icon>
+        </div>
+      </div>
+    }
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div class="lg:col-span-1 space-y-6">
+      <h3 class="text-lg font-semibold text-white">Configuration système</h3>
+      <div class="space-y-3">
+        <button
+          type="button"
+          (click)="go('doc-types')"
+          class="w-full card-navy p-4 flex items-center gap-4 hover:bg-navy-800 transition-all group"
+        >
+          <div
+            class="w-10 h-10 bg-amber-600/10 rounded-lg flex items-center justify-center group-hover:bg-amber-600 transition-colors"
+          >
+            <app-doc-icon name="layers" klass="w-5 h-5 text-amber-500 group-hover:text-white"></app-doc-icon>
+          </div>
+          <div class="text-left">
+            <p class="text-sm font-semibold text-white">Types de documents</p>
+            <p class="text-xs text-slate-500">Types disponibles</p>
+          </div>
+          <app-doc-icon name="chevron-right" klass="ml-auto w-4 h-4 text-slate-600"></app-doc-icon>
+        </button>
+        <button
+          type="button"
+          (click)="go('permissions')"
+          class="w-full card-navy p-4 flex items-center gap-4 hover:bg-navy-800 transition-all group"
+        >
+          <div
+            class="w-10 h-10 bg-emerald-600/10 rounded-lg flex items-center justify-center group-hover:bg-emerald-600 transition-colors"
+          >
+            <app-doc-icon name="lock" klass="w-5 h-5 text-emerald-500 group-hover:text-white"></app-doc-icon>
+          </div>
+          <div class="text-left">
+            <p class="text-sm font-semibold text-white">Permissions</p>
+            <p class="text-xs text-slate-500">Politiques d’accès (RBAC)</p>
+          </div>
+          <app-doc-icon name="chevron-right" klass="ml-auto w-4 h-4 text-slate-600"></app-doc-icon>
+        </button>
+      </div>
+    </div>
+
+    <div class="lg:col-span-2 space-y-6">
+      <div class="flex items-center justify-between">
+        <h3 class="text-lg font-semibold text-white">Utilisation des modules</h3>
+      </div>
+      <div class="card-navy p-6 space-y-6">
+        <div class="flex items-center justify-between border-b border-navy-800 pb-4">
+          <div class="flex items-center gap-4">
+            <div class="w-10 h-10 bg-blue-500/10 rounded-lg flex items-center justify-center">
+              <app-doc-icon name="file-text" klass="w-5 h-5 text-blue-500"></app-doc-icon>
+            </div>
+            <div>
+              <p class="text-sm font-semibold text-white">Documents générés</p>
+              <p class="text-xs text-slate-500">Total ce mois-ci</p>
+            </div>
+          </div>
+          <span class="text-xl font-bold text-white">1 245</span>
+        </div>
+        <div class="flex items-center justify-between border-b border-navy-800 pb-4">
+          <div class="flex items-center gap-4">
+            <div class="w-10 h-10 bg-emerald-500/10 rounded-lg flex items-center justify-center">
+              <app-doc-icon name="check-circle-2" klass="w-5 h-5 text-emerald-500"></app-doc-icon>
+            </div>
+            <div>
+              <p class="text-sm font-semibold text-white">Taux de succès API</p>
+              <p class="text-xs text-slate-500">Moyenne des points de terminaison</p>
+            </div>
+          </div>
+          <span class="text-xl font-bold text-white">99,8 %</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-4">
+            <div class="w-10 h-10 bg-amber-500/10 rounded-lg flex items-center justify-center">
+              <app-doc-icon name="hard-drive" klass="w-5 h-5 text-amber-500"></app-doc-icon>
+            </div>
+            <div>
+              <p class="text-sm font-semibold text-white">Stockage utilisé</p>
+              <p class="text-xs text-slate-500">Consommation blob</p>
+            </div>
+          </div>
+          <span class="text-xl font-bold text-white">45,2 Go</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

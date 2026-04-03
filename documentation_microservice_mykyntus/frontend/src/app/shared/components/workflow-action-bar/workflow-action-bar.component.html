@@ -1,0 +1,27 @@
+<div class="bar" *ngIf="request.allowedActions?.length">
+  <p class="hint">Actions proposées par le serveur pour votre rôle :</p>
+  <div class="row">
+    <button
+      type="button"
+      class="btn"
+      *ngFor="let a of request.allowedActions"
+      [disabled]="busy"
+      (click)="onActionClick(a)"
+    >
+      {{ actionLabel(a) }}
+    </button>
+  </div>
+</div>
+
+<div class="reject-panel" *ngIf="rejectMode">
+  <label for="rej">Motif de rejet (obligatoire)</label>
+  <textarea id="rej" rows="3" [(ngModel)]="rejectReason" name="rejectReason"></textarea>
+  <div class="row">
+    <button type="button" class="btn primary" [disabled]="busy || !rejectReason.trim()" (click)="confirmReject()">
+      Confirmer le rejet
+    </button>
+    <button type="button" class="btn ghost" [disabled]="busy" (click)="cancelReject()">Annuler</button>
+  </div>
+</div>
+
+<p class="err" *ngIf="error">{{ error }}</p>

@@ -1,0 +1,127 @@
+@if (role$ | async; as role) {
+  @if (!isAdmin(role)) {
+    <app-admin-shell title="Permissions Management" description="Accès refusé pour ce rôle." iconName="lock">
+      <div class="card-navy p-6">
+        <p class="text-slate-300">Seul le rôle `Admin` peut modifier la matrice RBAC.</p>
+      </div>
+    </app-admin-shell>
+  } @else if (loading) {
+    <app-admin-shell title="Permissions Management" description="Chargement des permissions…" iconName="lock">
+      <div class="card-navy p-6">
+        <p class="text-slate-300">Veuillez patienter.</p>
+      </div>
+    </app-admin-shell>
+  } @else {
+    <app-admin-shell
+      title="Gestion des permissions"
+      description="Matrice RBAC filtrable par type de document et département"
+      iconName="lock"
+    >
+      <div class="card-navy p-6 space-y-6">
+        @if (successMessage) {
+          <div class="px-4 py-3 rounded-lg bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+            {{ successMessage }}
+          </div>
+        }
+        @if (errorMessage) {
+          <div class="px-4 py-3 rounded-lg bg-red-500/10 text-red-300 border border-red-500/20">
+            {{ errorMessage }}
+          </div>
+        }
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label class="text-sm font-semibold text-white">Filtrer par type</label>
+            <select
+              [(ngModel)]="selectedDocType"
+              class="mt-2 w-full bg-navy-800 border border-navy-700 rounded-lg p-3 text-sm text-slate-200 outline-none focus:border-blue-500"
+            >
+              <option value="ALL">Tous les types</option>
+              @for (dt of docTypes; track dt.id) {
+                <option [value]="dt.id">{{ dt.name }}</option>
+              }
+            </select>
+          </div>
+          <div>
+            <label class="text-sm font-semibold text-white">Filtrer par département</label>
+            <select
+              [(ngModel)]="selectedDepartment"
+              class="mt-2 w-full bg-navy-800 border border-navy-700 rounded-lg p-3 text-sm text-slate-200 outline-none focus:border-blue-500"
+            >
+              <option value="ALL">Tous les départements</option>
+              @for (dep of departments; track dep) {
+                <option [value]="dep">{{ dep }}</option>
+              }
+            </select>
+          </div>
+          <div class="flex items-end">
+            <div class="flex gap-3 flex-wrap">
+              <button
+                type="button"
+                (click)="onSave()"
+                [disabled]="saving"
+                class="px-6 py-3 rounded-lg font-bold text-white transition-all"
+                [ngClass]="
+                  saving ? 'bg-slate-600 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-600/20'
+                "
+              >
+                {{ saving ? 'Sauvegarde…' : 'Sauvegarder' }}
+              </button>
+              <button
+                type="button"
+                (click)="onReset()"
+                [disabled]="saving"
+                class="px-6 py-3 rounded-lg font-bold text-slate-200 border border-navy-800 hover:bg-navy-800/50 transition-all"
+              >
+                Réinitialiser
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="border border-navy-800 rounded-xl overflow-hidden">
+          <div class="px-4 py-3 bg-navy-800/30 flex items-center justify-between gap-3">
+            <p class="text-sm text-slate-300">
+              Règles actives:
+              <span class="text-white font-semibold">{{ filterSummaryDocType() }}</span>
+              •
+              <span class="text-white font-semibold">{{ filterSummaryDept() }}</span>
+            </p>
+            <div class="text-xs text-slate-500">
+              Modifiez les cases à cocher puis cliquez sur <span class="text-slate-200 font-semibold">Sauvegarder</span>.
+            </div>
+          </div>
+
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-navy-800/20 border-b border-navy-800">
+                <th class="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Permission</th>
+                @for (r of adminRoles; track r) {
+                  <th class="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">{{ r }}</th>
+                }
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-navy-800">
+              @for (permKey of permissionKeys; track permKey) {
+                <tr class="hover:bg-navy-800/15 transition-colors">
+                  <td class="px-6 py-4 text-sm text-slate-200 font-semibold">{{ permissionLabels[permKey] }}</td>
+                  @for (r of adminRoles; track r) {
+                    <td class="px-6 py-4">
+                      <div class="flex items-center">
+                        <app-admin-toggle
+                          [checked]="resolvedForRole(r)[permKey]"
+                          (checkedChange)="onToggle(r, permKey, $event)"
+                          [titleAttr]="'Modifier: ' + permissionLabels[permKey] + ' pour ' + r"
+                        ></app-admin-toggle>
+                      </div>
+                    </td>
+                  }
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </app-admin-shell>
+  }
+}

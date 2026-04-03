@@ -1,0 +1,135 @@
+<div class="space-y-4">
+  @if (loadError) {
+    <p class="text-red-400 text-sm">{{ loadError }}</p>
+  } @else if (loading) {
+    <p class="text-slate-400 text-sm">Chargement du journal…</p>
+  }
+  <div>
+    <h3 class="text-xl font-bold text-white">{{ title }}</h3>
+    <p class="text-sm text-slate-500 mt-1">
+      Tableau audit structuré avec filtres hiérarchiques, tri et pagination.
+    </p>
+  </div>
+
+  @if (section === 'dashboard') {
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div
+        class="card-navy p-4 bg-gradient-to-br from-blue-950/40 to-navy-900 border border-blue-900/40 shadow-sm hover:shadow-[0_10px_25px_rgba(37,99,235,0.18)] hover:scale-[1.03] transition-all duration-300"
+      >
+        <div class="flex items-center gap-2 text-slate-300">
+          <span class="text-xs">Nombre total</span>
+        </div>
+        <p class="text-2xl text-white font-bold mt-2">{{ rows.length }}</p>
+        <p class="text-xs text-slate-500">elements audites</p>
+      </div>
+      <div
+        class="card-navy p-4 bg-gradient-to-br from-emerald-950/35 to-navy-900 border border-emerald-900/40 shadow-sm hover:shadow-[0_10px_25px_rgba(16,185,129,0.16)] hover:scale-[1.03] transition-all duration-300"
+      >
+        <div class="flex items-center gap-2 text-slate-300">
+          <span class="text-xs">Nombre valide</span>
+        </div>
+        <p class="text-2xl text-white font-bold mt-2">{{ countRowsValide() }}</p>
+        <p class="text-xs text-slate-500">elements conformes</p>
+      </div>
+      <div
+        class="card-navy p-4 bg-gradient-to-br from-amber-950/35 to-navy-900 border border-amber-900/40 shadow-sm hover:shadow-[0_10px_25px_rgba(245,158,11,0.16)] hover:scale-[1.03] transition-all duration-300"
+      >
+        <div class="flex items-center gap-2 text-slate-300">
+          <span class="text-xs">Nombre en attente</span>
+        </div>
+        <p class="text-2xl text-white font-bold mt-2">{{ countRowsEnAttente() }}</p>
+        <p class="text-xs text-slate-500">verifications a traiter</p>
+      </div>
+      <div
+        class="card-navy p-4 bg-gradient-to-br from-rose-950/35 to-navy-900 border border-rose-900/40 shadow-sm hover:shadow-[0_10px_25px_rgba(244,63,94,0.16)] hover:scale-[1.03] transition-all duration-300"
+      >
+        <div class="flex items-center gap-2 text-slate-300">
+          <span class="text-xs">Nombre d anomalies</span>
+        </div>
+        <p class="text-2xl text-white font-bold mt-2">{{ anomalies.length }}</p>
+        <p class="text-xs text-slate-500">points critiques suivis</p>
+      </div>
+    </div>
+  }
+
+  @if (section === 'access-history') {
+    <div class="card-navy overflow-hidden border border-navy-800/80">
+      <table class="w-full text-sm">
+        <thead class="bg-navy-800/55 text-slate-300">
+          <tr>
+            <th class="px-4 py-3 text-left">Utilisateur</th>
+            <th class="px-4 py-3 text-left">Date / heure</th>
+            <th class="px-4 py-3 text-left">IP</th>
+            <th class="px-4 py-3 text-left">Localisation</th>
+            <th class="px-4 py-3 text-left">Statut</th>
+            <th class="px-4 py-3 text-left">Type</th>
+            <th class="px-4 py-3 text-left">Rôle</th>
+            <th class="px-4 py-3 text-left">Département</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-navy-800">
+          @for (r of accessRows; track r.id) {
+            <tr class="hover:bg-navy-800/30">
+              <td class="px-4 py-3 text-slate-200">{{ r.user }}</td>
+              <td class="px-4 py-3 text-slate-400">{{ r.datetime }}</td>
+              <td class="px-4 py-3 text-slate-300">{{ r.ip }}</td>
+              <td class="px-4 py-3 text-slate-400">{{ r.location }}</td>
+              <td class="px-4 py-3">
+                @if (r.success) {
+                  <span class="text-emerald-300 text-xs">Succès</span>
+                } @else {
+                  <span class="text-rose-300 text-xs">Échec</span>
+                }
+              </td>
+              <td class="px-4 py-3 text-slate-300">{{ r.type }}</td>
+              <td class="px-4 py-3 text-slate-300">{{ r.role }}</td>
+              <td class="px-4 py-3 text-slate-300">{{ r.departement }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  @if (section === 'anomalies') {
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      @for (a of anomalies; track a.id) {
+        <div class="card-navy p-4 border border-navy-800">
+          <p class="text-xs font-bold text-rose-300 uppercase">{{ a.severity }}</p>
+          <h4 class="text-white font-semibold mt-2">{{ a.title }}</h4>
+          <p class="text-sm text-slate-400 mt-1">{{ a.description }}</p>
+          <p class="text-xs text-slate-500 mt-2">{{ a.user }}</p>
+        </div>
+      }
+    </div>
+  }
+
+  @if (section === 'journal' || section === 'reporting') {
+    <div class="card-navy overflow-hidden">
+      <table class="w-full text-left text-sm border-collapse">
+        <thead>
+          <tr class="bg-navy-800/50 border-b border-navy-800">
+            <th class="px-4 py-3 text-[11px] font-bold text-slate-500 uppercase">Date/heure</th>
+            <th class="px-4 py-3 text-[11px] font-bold text-slate-500 uppercase">Utilisateur</th>
+            <th class="px-4 py-3 text-[11px] font-bold text-slate-500 uppercase">Action</th>
+            <th class="px-4 py-3 text-[11px] font-bold text-slate-500 uppercase">Élément</th>
+            <th class="px-4 py-3 text-[11px] font-bold text-slate-500 uppercase">Département</th>
+            <th class="px-4 py-3 text-[11px] font-bold text-slate-500 uppercase">Statut</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-navy-800">
+          @for (r of rows; track r.id) {
+            <tr class="hover:bg-navy-800/30">
+              <td class="px-4 py-3 text-slate-400">{{ r.datetime }}</td>
+              <td class="px-4 py-3 text-slate-200">{{ r.user }}</td>
+              <td class="px-4 py-3 text-slate-300">{{ r.action }}</td>
+              <td class="px-4 py-3 text-slate-300">{{ r.item }}</td>
+              <td class="px-4 py-3 text-slate-400">{{ r.departement }}</td>
+              <td class="px-4 py-3 text-slate-300">{{ r.status }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>

@@ -1,0 +1,72 @@
+.bar {
+  margin: 1rem 0;
+  padding: 1rem;
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #dfe3ec;
+}
+
+.hint {
+  margin: 0 0 0.5rem;
+  font-size: 0.875rem;
+  color: #475569;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.btn {
+  cursor: pointer;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  padding: 0.45rem 0.9rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn.primary {
+  background: #2563eb;
+  color: #fff;
+  border-color: #1d4ed8;
+}
+
+.btn.ghost {
+  background: transparent;
+}
+
+.reject-panel {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: #fff8f8;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+}
+
+.reject-panel label {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.875rem;
+}
+
+.reject-panel textarea {
+  width: 100%;
+  margin-bottom: 0.75rem;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  padding: 0.5rem;
+  font: inherit;
+}
+
+.err {
+  color: #b91c1c;
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+}

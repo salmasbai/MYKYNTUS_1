@@ -1,0 +1,26 @@
+<h1>Tableau de bord</h1>
+
+<section class="card" *ngIf="status">
+  <h2>Connexion base</h2>
+  <p *ngIf="status.connected">
+    Connecté · {{ status.schema }} · {{ status.documentTypeCount }} type(s) catalogue.
+  </p>
+  <p *ngIf="!status.connected" class="warn">
+    Déconnecté<span *ngIf="status.errorMessage"> : {{ status.errorMessage }}</span>
+  </p>
+</section>
+
+<p *ngIf="loading">Chargement…</p>
+<p *ngIf="error" class="warn">{{ error }}</p>
+
+<section class="card" *ngIf="!loading && !error">
+  <h2>Demandes ({{ totalRequestCount }} au total — aperçu {{ requests.length }})</h2>
+  <p class="muted">Données paginées côté API · actions selon <code>allowedActions</code>.</p>
+  <ul class="list">
+    <li *ngFor="let r of requests">
+      <a [routerLink]="['/documentation', 'requests', r.internalId]">{{ r.id }}</a>
+      — {{ r.status }} — {{ r.type }}
+      <span class="tag" *ngFor="let a of r.allowedActions">{{ a }}</span>
+    </li>
+  </ul>
+</section>

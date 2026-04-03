@@ -1,0 +1,179 @@
+<aside
+  class="documentation-sidebar h-screen bg-navy-900 border-r border-navy-800 flex flex-col fixed left-0 top-0 z-50 transition-all duration-300"
+  [ngClass]="collapsed() ? 'w-[70px]' : 'w-64'"
+>
+  <div
+    class="p-4 flex items-center gap-3 shrink-0"
+    [class.justify-center]="collapsed()"
+    [class.justify-between]="!collapsed()"
+  >
+    @if (!collapsed()) {
+      <div class="flex items-center gap-3 overflow-hidden min-w-0">
+        <div
+          class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shrink-0 shadow-[0_0_10px_rgba(37,99,235,0.5)]"
+        >
+          <app-doc-icon name="file-text" klass="text-white w-5 h-5"></app-doc-icon>
+        </div>
+        <h1 class="text-xl font-bold tracking-tight text-white whitespace-nowrap">MyKyntus</h1>
+      </div>
+    }
+    <button
+      type="button"
+      (click)="toggleSidebar()"
+      class="p-2 text-slate-400 hover:text-white hover:bg-navy-800 rounded-lg transition-colors shrink-0"
+      [attr.aria-expanded]="!collapsed()"
+      aria-label="Replier ou déplier le menu"
+    >
+      @if (collapsed()) {
+        <app-doc-icon name="menu" klass="w-5 h-5"></app-doc-icon>
+      } @else {
+        <app-doc-icon name="chevron-left" klass="w-5 h-5"></app-doc-icon>
+      }
+    </button>
+  </div>
+
+  <nav class="flex-1 px-3 space-y-6 overflow-y-auto pb-4 overflow-x-hidden mt-4 min-h-0">
+    @if (role() === 'Pilote') {
+      <div>
+        @if (!collapsed()) {
+          <h3 class="px-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">
+            {{ app.t('nav.personal') }}
+          </h3>
+        }
+        <div class="space-y-1">
+          @for (item of piloteNavItems; track item.id) {
+            <button
+              type="button"
+              (click)="navigate(item.id)"
+              [title]="collapsed() ? app.t(item.labelKey) : undefined"
+              class="menu-item w-full flex items-center gap-3 rounded-lg py-3 transition-all duration-200 text-left"
+              [class.justify-center]="collapsed()"
+              [class.px-2]="collapsed()"
+              [class.px-4]="!collapsed()"
+              [ngClass]="{
+                active: activeTab() === item.id,
+                'nav-idle': activeTab() !== item.id,
+              }"
+            >
+              <app-doc-icon [name]="item.icon" klass="w-5 h-5 shrink-0"></app-doc-icon>
+              @if (!collapsed()) {
+                <span class="font-medium text-sm whitespace-nowrap flex-1">{{ app.t(item.labelKey) }}</span>
+              }
+            </button>
+          }
+        </div>
+      </div>
+    }
+
+    @if (role() === 'Audit') {
+      <div class="space-y-1">
+        @for (item of auditNavItems; track item.key) {
+          <button
+            type="button"
+            (click)="auditSelect(item.section, item.tab)"
+            [title]="collapsed() ? (item.labelKey ? app.t(item.labelKey) : item.label) : undefined"
+            class="menu-item w-full flex items-center gap-3 rounded-lg py-3 transition-all duration-200 text-left"
+            [class.justify-center]="collapsed()"
+            [class.px-2]="collapsed()"
+            [class.px-4]="!collapsed()"
+            [ngClass]="{
+              active: auditItemActive(item, activeTab(), auditSec()),
+              'nav-idle': !auditItemActive(item, activeTab(), auditSec()),
+            }"
+          >
+            <app-doc-icon [name]="item.icon" klass="w-5 h-5 shrink-0"></app-doc-icon>
+            @if (!collapsed()) {
+              <span class="font-medium text-sm whitespace-nowrap flex-1">{{
+                item.labelKey ? app.t(item.labelKey) : item.label
+              }}</span>
+            }
+          </button>
+        }
+      </div>
+    }
+
+    @if (role() !== 'Pilote' && role() !== 'Audit') {
+      <div>
+        @if (!collapsed()) {
+          <h3 class="px-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">
+            {{ role() }} {{ app.t('nav.interface') }}
+          </h3>
+        }
+        <div class="space-y-1">
+          @for (item of managementItems(role()); track item.id) {
+            <button
+              type="button"
+              (click)="navigate(item.id)"
+              [title]="collapsed() ? app.t(item.labelKey) : undefined"
+              class="menu-item w-full flex items-center gap-3 rounded-lg py-3 transition-all duration-200 text-left"
+              [class.justify-center]="collapsed()"
+              [class.px-2]="collapsed()"
+              [class.px-4]="!collapsed()"
+              [ngClass]="{
+                active: activeTab() === item.id,
+                'nav-idle': activeTab() !== item.id,
+              }"
+            >
+              <app-doc-icon [name]="item.icon" klass="w-5 h-5 shrink-0"></app-doc-icon>
+              @if (!collapsed()) {
+                <span class="font-medium text-sm whitespace-nowrap flex-1">{{ app.t(item.labelKey) }}</span>
+              }
+            </button>
+          }
+        </div>
+      </div>
+    }
+  </nav>
+
+  <div
+    class="p-4 border-t border-navy-800 shrink-0"
+    [class.flex]="collapsed()"
+    [class.flex-col]="collapsed()"
+    [class.items-center]="collapsed()"
+    [class.gap-4]="collapsed()"
+  >
+    @if (collapsed()) {
+      <div
+        class="w-10 h-10 bg-navy-800 rounded-full flex items-center justify-center text-sm font-bold text-blue-400 border border-blue-500/20 shadow-[0_0_10px_rgba(37,99,235,0.1)]"
+        [title]="'Current Role: ' + role()"
+      >
+        {{ role()[0] }}
+      </div>
+    } @else {
+      @if (devUserPicker) {
+        <div class="mb-4">
+          <label class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-2 block"
+            >Utilisateur (dev)</label
+          >
+          <select
+            name="docDevUser"
+            class="w-full bg-navy-800 border border-navy-700 text-slate-300 text-sm rounded-lg p-2 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/50 cursor-pointer transition-all"
+            [ngModel]="selectedDevUserId"
+            (ngModelChange)="onDevUserPicked($event)"
+          >
+            @for (u of identity.directoryUsers$ | async; track u.id) {
+              <option [ngValue]="u.id">{{ u.prenom }} {{ u.nom }} ({{ u.role }})</option>
+            }
+          </select>
+        </div>
+      } @else {
+        @if (identity.profile$ | async; as prof) {
+          <p class="text-[11px] text-slate-400 mb-4 px-1">{{ prof.prenom }} {{ prof.nom }} · {{ prof.role }}</p>
+        }
+      }
+    }
+    <button
+      type="button"
+      [title]="collapsed() ? app.t('nav.logout') : undefined"
+      class="menu-item w-full flex items-center gap-3 text-slate-400 hover:bg-red-500/10 hover:text-red-500 rounded-lg py-3 transition-all text-left"
+      [class.justify-center]="collapsed()"
+      [class.px-2]="collapsed()"
+      [class.px-4]="!collapsed()"
+    >
+      <app-doc-icon name="log-out" klass="w-5 h-5 shrink-0"></app-doc-icon>
+      @if (!collapsed()) {
+        <span class="font-medium flex-1">{{ app.t('nav.logout') }}</span>
+      }
+    </button>
+  </div>
+</aside>

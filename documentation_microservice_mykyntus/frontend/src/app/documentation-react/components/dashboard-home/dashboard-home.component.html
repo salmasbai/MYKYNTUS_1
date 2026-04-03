@@ -1,0 +1,25 @@
+@if (role$ | async; as role) {
+  @switch (role) {
+    @case ('Pilote') {
+      <app-pilote-dashboard></app-pilote-dashboard>
+    }
+    @case ('Coach') {
+      <app-manager-dashboard [role]="role"></app-manager-dashboard>
+    }
+    @case ('Manager') {
+      <app-manager-dashboard [role]="role"></app-manager-dashboard>
+    }
+    @case ('RH') {
+      <app-rh-dashboard></app-rh-dashboard>
+    }
+    @case ('RP') {
+      <app-rp-dashboard [role]="role"></app-rp-dashboard>
+    }
+    @case ('Admin') {
+      <app-admin-dashboard></app-admin-dashboard>
+    }
+    @case ('Audit') {
+      <app-audit-journal-page [title]="'Journal d’audit'"></app-audit-journal-page>
+    }
+  }
+}

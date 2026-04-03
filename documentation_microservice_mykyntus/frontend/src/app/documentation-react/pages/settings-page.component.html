@@ -1,0 +1,146 @@
+@if (role$ | async; as role) {
+  <div class="max-w-4xl mx-auto space-y-8">
+    <div>
+      <h1 class="text-2xl font-semibold text-slate-50">Paramètres</h1>
+      <p class="text-sm text-slate-500 mt-1">Profil, notifications et préférences.</p>
+    </div>
+
+    @if (saved) {
+      <div class="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-200">
+        Enregistré.
+      </div>
+    }
+
+    <section class="card-navy p-4 space-y-4">
+      <div class="flex items-center gap-3 pb-3 border-b border-navy-800">
+        <app-doc-icon name="user" klass="w-5 h-5 text-blue-500"></app-doc-icon>
+        <h2 class="text-lg font-bold text-white">Profil</h2>
+      </div>
+      <div class="space-y-4">
+        @if (profile$ | async; as profile) {
+          <div>
+            <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Informations personnelles</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-2 sm:gap-y-0 text-sm min-w-0">
+              <div class="min-w-0">
+                <span class="text-slate-500 block mb-0.5">Nom</span>
+                <p class="text-slate-100 font-medium mb-2 sm:mb-0 break-words">{{ profile.nom }}</p>
+              </div>
+              <div class="min-w-0">
+                <span class="text-slate-500 block mb-0.5">Prénom</span>
+                <p class="text-slate-100 font-medium mb-2 sm:mb-0 break-words">{{ profile.prenom }}</p>
+              </div>
+              <div class="min-w-0">
+                <span class="text-slate-500 block mb-0.5">Rôle</span>
+                <p class="text-slate-100 font-medium mb-0 break-words">{{ roleLabelFromProfile(profile) }}</p>
+              </div>
+            </div>
+          </div>
+          <div class="border-t border-navy-800 pt-2">
+            <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Organisation</h3>
+            <p class="text-sm text-slate-400 leading-snug">{{ orgCompact(role) || '—' }}</p>
+          </div>
+          <div class="border-t border-navy-800 pt-2">
+            <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Contact</h3>
+            <div class="space-y-2 text-sm">
+              <div>
+                <span class="text-slate-500 block mb-0.5">E-mail</span>
+                <p class="text-slate-100 font-medium mb-0">{{ profile.email }}</p>
+              </div>
+              <div class="rounded-lg border border-navy-800 bg-navy-900/40 p-2">
+                <span class="text-slate-500 block mb-0.5">Annuaire (base Documentation)</span>
+                @if (((directoryUsers$ | async) ?? []).length > 0) {
+                  <ul class="text-slate-400 text-xs mt-1 leading-relaxed mb-0 list-disc list-inside max-h-40 overflow-y-auto">
+                    @for (u of (directoryUsers$ | async) ?? []; track u.id) {
+                      <li>{{ directoryUserLine(u) }}</li>
+                    }
+                  </ul>
+                } @else {
+                  <p class="text-slate-500 text-xs mt-1 mb-0">Aucune entrée chargée (vérifiez GET /api/documentation/data/users).</p>
+                }
+              </div>
+            </div>
+          </div>
+        } @else {
+          <p class="text-sm text-slate-500">Chargement du profil…</p>
+        }
+      </div>
+      <p class="text-xs text-slate-600 pt-3 border-t border-navy-800">
+        Données profil et annuaire : API <code class="text-slate-500">/api/documentation/data/users</code>.
+      </p>
+    </section>
+
+    <section class="card-navy p-6 space-y-6">
+      <div class="flex items-center gap-3 pb-4 border-b border-navy-800">
+        <app-doc-icon name="bell" klass="w-5 h-5 text-blue-500"></app-doc-icon>
+        <h2 class="text-lg font-bold text-white">Notifications</h2>
+      </div>
+      <div class="space-y-4">
+        @for (row of notificationPrefRows; track row.key) {
+          <label class="flex items-center justify-between p-3 rounded-lg bg-navy-900/50 border border-navy-800">
+            <span class="text-sm text-slate-300">{{ row.label }}</span>
+            <input
+              type="checkbox"
+              class="rounded border-navy-700"
+              [checked]="prefEnabled(row.key)"
+              (change)="togglePref(row.key)"
+            />
+          </label>
+        }
+      </div>
+    </section>
+
+    <section class="card-navy p-6 space-y-6">
+      <div class="flex items-center gap-3 pb-4 border-b border-navy-800">
+        <app-doc-icon name="layers" klass="w-5 h-5 text-blue-500"></app-doc-icon>
+        <h2 class="text-lg font-bold text-white">Interface</h2>
+      </div>
+      <div class="flex items-center justify-between p-3 rounded-lg bg-navy-900/50 border border-navy-800">
+        <span class="text-sm text-slate-300">Mode compact (espacements réduits)</span>
+        <input
+          type="checkbox"
+          class="rounded border-navy-700"
+          [checked]="compactMode"
+          (change)="persistUi(!compactMode)"
+        />
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <button
+          type="button"
+          (click)="app.theme !== 'dark' && app.toggleTheme()"
+          class="flex items-center justify-between p-4 rounded-lg border transition-all"
+          [ngClass]="
+            app.theme === 'dark'
+              ? 'bg-blue-600/10 border-blue-500/50 text-white'
+              : 'bg-navy-900 border-navy-800 text-slate-400 hover:bg-navy-800'
+          "
+        >
+          <span class="flex items-center gap-2">
+            <app-doc-icon name="moon" klass="w-5 h-5"></app-doc-icon>
+            Sombre
+          </span>
+          @if (app.theme === 'dark') {
+            <app-doc-icon name="check-circle-2" klass="w-5 h-5 text-blue-500"></app-doc-icon>
+          }
+        </button>
+        <button
+          type="button"
+          (click)="app.theme !== 'light' && app.toggleTheme()"
+          class="flex items-center justify-between p-4 rounded-lg border transition-all"
+          [ngClass]="
+            app.theme === 'light'
+              ? 'bg-blue-600/10 border-blue-500/50 text-white'
+              : 'bg-navy-900 border-navy-800 text-slate-400 hover:bg-navy-800'
+          "
+        >
+          <span class="flex items-center gap-2">
+            <app-doc-icon name="sun" klass="w-5 h-5"></app-doc-icon>
+            Clair
+          </span>
+          @if (app.theme === 'light') {
+            <app-doc-icon name="check-circle-2" klass="w-5 h-5 text-blue-500"></app-doc-icon>
+          }
+        </button>
+      </div>
+    </section>
+  </div>
+}

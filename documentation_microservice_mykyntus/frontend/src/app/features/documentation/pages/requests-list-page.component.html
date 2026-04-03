@@ -1,0 +1,85 @@
+<h1>Demandes</h1>
+
+<section class="filters">
+  <div class="filter-row">
+    <label>
+      Statut
+      <select name="status" [(ngModel)]="statusFilter" [disabled]="loading">
+        <option *ngFor="let o of statusOptions" [ngValue]="o.value">{{ o.label }}</option>
+      </select>
+    </label>
+    <label>
+      Type
+      <select name="type" [(ngModel)]="typeFilter" [disabled]="loading">
+        <option *ngFor="let o of typeOptions" [ngValue]="o.value">{{ o.label }}</option>
+      </select>
+    </label>
+    <label>
+      Rôle demandeur
+      <select name="role" [(ngModel)]="roleFilter" [disabled]="loading">
+        <option *ngFor="let o of roleOptions" [ngValue]="o.value">{{ o.label }}</option>
+      </select>
+    </label>
+  </div>
+  <div class="filter-row">
+    <label>
+      Tri
+      <select name="sortBy" [(ngModel)]="sortBy" [disabled]="loading">
+        <option *ngFor="let o of sortByOptions" [ngValue]="o.value">{{ o.label }}</option>
+      </select>
+    </label>
+    <label>
+      Ordre
+      <select name="sortOrder" [(ngModel)]="sortOrder" [disabled]="loading">
+        <option ngValue="desc">Décroissant</option>
+        <option ngValue="asc">Croissant</option>
+      </select>
+    </label>
+    <button type="button" class="btn primary" [disabled]="loading" (click)="applyFilters()">Appliquer les filtres</button>
+  </div>
+</section>
+
+<div class="pager" *ngIf="!loading && !error">
+  <button type="button" [disabled]="loading || page <= 1" (click)="previousPage()">Page précédente</button>
+  <span class="meta">Page {{ page }} / {{ totalPages }} · {{ totalCount }} élément(s)</span>
+  <button type="button" [disabled]="loading || page >= totalPages" (click)="nextPage()">Page suivante</button>
+</div>
+
+<div class="pager goto" *ngIf="!loading && !error && totalPages > 1">
+  <label>
+    Aller à la page
+    <input type="number" name="pageInput" [(ngModel)]="pageInput" min="1" [max]="totalPages" [disabled]="loading" />
+  </label>
+  <button type="button" [disabled]="loading" (click)="goToPage()">OK</button>
+</div>
+
+<p *ngIf="loading">Chargement…</p>
+<p *ngIf="error" class="err">{{ error }}</p>
+
+<table *ngIf="!loading && !error" class="table">
+  <thead>
+    <tr>
+      <th>N°</th>
+      <th>Type</th>
+      <th>Date</th>
+      <th>Statut</th>
+      <th>Demandeur / bénéf.</th>
+      <th>Actions serveur</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr *ngFor="let r of requests">
+      <td>
+        <a [routerLink]="['/documentation', 'requests', r.internalId]">{{ r.id }}</a>
+      </td>
+      <td>{{ r.type }}</td>
+      <td>{{ r.requestDate }}</td>
+      <td>{{ r.status }}</td>
+      <td>{{ r.employeeName }}</td>
+      <td>
+        <span class="pill" *ngFor="let a of r.allowedActions">{{ a }}</span>
+        <span *ngIf="!r.allowedActions?.length" class="muted">—</span>
+      </td>
+    </tr>
+  </tbody>
+</table>

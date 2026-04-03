@@ -1,0 +1,146 @@
+h1 {
+  margin-top: 0;
+}
+
+.filters {
+  margin-bottom: 1.25rem;
+  padding: 1rem;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-end;
+  margin-bottom: 0.75rem;
+}
+
+.filter-row:last-child {
+  margin-bottom: 0;
+}
+
+.filters label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.8rem;
+  color: #475569;
+  gap: 0.25rem;
+}
+
+.filters select,
+.goto input[type='number'] {
+  padding: 0.35rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  min-width: 10rem;
+}
+
+.btn.primary {
+  padding: 0.45rem 1rem;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.btn.primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.goto {
+  margin-bottom: 1rem;
+}
+
+.goto label {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-right: 0.5rem;
+  font-size: 0.85rem;
+  color: #475569;
+}
+
+.goto button {
+  cursor: pointer;
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+}
+
+.goto button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.pager button {
+  cursor: pointer;
+  padding: 0.4rem 0.85rem;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+}
+
+.pager button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.meta {
+  font-size: 0.9rem;
+  color: #475569;
+}
+
+.err {
+  color: #b91c1c;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.table th,
+.table td {
+  padding: 0.65rem 0.85rem;
+  text-align: left;
+  border-bottom: 1px solid #e2e8f0;
+  vertical-align: top;
+}
+
+.table th {
+  background: #f1f5f9;
+  font-size: 0.8rem;
+}
+
+.pill {
+  display: inline-block;
+  margin: 0.1rem 0.25rem 0 0;
+  padding: 0.15rem 0.45rem;
+  background: #e0e7ff;
+  border-radius: 999px;
+  font-size: 0.75rem;
+}
+
+.muted {
+  color: #94a3b8;
+  font-size: 0.85rem;
+}

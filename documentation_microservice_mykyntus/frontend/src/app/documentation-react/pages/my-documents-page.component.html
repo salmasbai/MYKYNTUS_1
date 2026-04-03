@@ -1,0 +1,119 @@
+@if (role$ | async; as role) {
+  <div class="space-y-6">
+    @if (loading) {
+      <p class="text-slate-400 text-sm">Chargement…</p>
+    } @else if (error) {
+      <p class="text-red-400 text-sm">{{ error }}</p>
+    }
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div class="relative flex-1 max-w-md">
+        <app-doc-icon
+          name="search"
+          klass="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500"
+        ></app-doc-icon>
+        <input
+          type="text"
+          [(ngModel)]="search"
+          placeholder="Filter by name or type..."
+          class="w-full bg-navy-900 border border-navy-800 rounded-lg py-2 pl-10 pr-4 text-sm text-slate-300 focus:outline-none focus:border-blue-500 transition-all"
+        />
+      </div>
+      <div class="flex items-center gap-3">
+        <button
+          type="button"
+          class="flex items-center gap-2 px-4 py-2 bg-navy-900 border border-navy-800 rounded-lg text-sm text-slate-300 hover:bg-navy-800 transition-all"
+        >
+          <app-doc-icon name="filter" klass="w-4 h-4"></app-doc-icon>
+          Filter
+        </button>
+        <button
+          type="button"
+          class="flex items-center gap-2 px-4 py-2 bg-blue-600 rounded-lg text-sm font-semibold text-white hover:bg-blue-500 transition-all"
+        >
+          <app-doc-icon name="download" klass="w-4 h-4"></app-doc-icon>
+          Download All
+        </button>
+      </div>
+    </div>
+
+    <div class="card-navy overflow-hidden">
+      <table class="w-full text-left border-collapse">
+        <thead>
+          <tr class="bg-navy-800/50 border-b border-navy-800">
+            <th class="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Document Name</th>
+            <th class="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Type</th>
+            <th class="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Date Created</th>
+            <th class="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Status</th>
+            <th class="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-right">
+              Actions
+            </th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-navy-800">
+          @if (!loading && !error && filtered(role).length === 0) {
+            <tr>
+              <td colspan="5" class="px-6 py-8 text-center text-sm text-slate-500">Aucun document généré.</td>
+            </tr>
+          }
+          @for (doc of filtered(role); track doc.id) {
+            <tr class="hover:bg-navy-800/30 transition-colors group">
+              <td class="px-6 py-4">
+                <div class="flex items-center gap-3">
+                  <div
+                    class="w-10 h-10 bg-navy-800 rounded-lg flex items-center justify-center group-hover:bg-navy-700 transition-colors"
+                  >
+                    <app-doc-icon name="file-text" klass="w-5 h-5 text-blue-500"></app-doc-icon>
+                  </div>
+                  <div>
+                    <p class="text-sm font-semibold text-slate-200">{{ doc.name }}</p>
+                    <p class="text-xs text-slate-500">—</p>
+                  </div>
+                </div>
+              </td>
+              <td class="px-6 py-4">
+                <span class="text-sm text-slate-400">{{ doc.type }}</span>
+              </td>
+              <td class="px-6 py-4 text-sm text-slate-400">{{ doc.dateCreated }}</td>
+              <td class="px-6 py-4">
+                <app-status-badge [status]="doc.status"></app-status-badge>
+              </td>
+              <td class="px-6 py-4 text-right">
+                <div class="flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    class="p-2 text-slate-500 hover:text-blue-500 hover:bg-blue-500/10 rounded-lg transition-all"
+                    title="View"
+                  >
+                    <app-doc-icon name="eye" klass="w-4 h-4"></app-doc-icon>
+                  </button>
+                  <button
+                    type="button"
+                    class="p-2 text-slate-500 hover:text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition-all"
+                    title="Download"
+                  >
+                    <app-doc-icon name="download" klass="w-4 h-4"></app-doc-icon>
+                  </button>
+                  <button
+                    type="button"
+                    class="p-2 text-slate-500 hover:text-white hover:bg-navy-700 rounded-lg transition-all"
+                  >
+                    <app-doc-icon name="more-vertical" klass="w-4 h-4"></app-doc-icon>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+      @if (filtered(role).length === 0) {
+        <div class="p-12 text-center">
+          <div class="w-16 h-16 bg-navy-800 rounded-full flex items-center justify-center mx-auto mb-4">
+            <app-doc-icon name="search" klass="w-8 h-8 text-slate-600"></app-doc-icon>
+          </div>
+          <h4 class="text-slate-300 font-medium">No documents found</h4>
+          <p class="text-slate-500 text-sm">Try adjusting your search or filters</p>
+        </div>
+      }
+    </div>
+  </div>
+}
