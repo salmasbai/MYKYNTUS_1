@@ -2,6 +2,7 @@ import { HttpEvent, HttpHandler, HttpInterceptor, HttpRequest } from '@angular/c
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 
+import { environment } from '../../../environments/environment';
 import { DocumentationHeaders } from '../constants/documentation-headers';
 import { DocumentationIdentityService } from '../services/documentation-identity.service';
 
@@ -16,7 +17,7 @@ function newCorrelationId(): string {
 
 /**
  * Ajoute les en-têtes de contexte utilisateur attendus par le backend.
- * En production, la gateway les pose en amont — cet intercepteur peut être retiré ou retourner req inchangé.
+ * En production, la gateway les pose en amont — cet intercepteur ne fusionne pas l’identité locale (évite tout mélange avec le mode dev).
  */
 @Injectable()
 export class DocumentationUserContextInterceptor implements HttpInterceptor {
@@ -32,10 +33,12 @@ export class DocumentationUserContextInterceptor implements HttpInterceptor {
       headers = headers.set(DocumentationHeaders.correlationId, newCorrelationId());
     }
 
-    const fromIdentity = this.identity.getHeaderMap();
-    for (const [key, value] of Object.entries(fromIdentity)) {
-      if (value) {
-        headers = headers.set(key, value);
+    if (!environment.production) {
+      const fromIdentity = this.identity.getHeaderMap();
+      for (const [key, value] of Object.entries(fromIdentity)) {
+        if (value) {
+          headers = headers.set(key, value);
+        }
       }
     }
 

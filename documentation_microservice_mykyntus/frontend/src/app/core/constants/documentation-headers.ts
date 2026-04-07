@@ -7,4 +7,7 @@ export const DocumentationHeaders = {
   userRole: 'X-User-Role',
   tenantId: 'X-Tenant-Id',
   correlationId: 'X-Correlation-Id',
+  /** Périmètre hiérarchique (optionnel) — aligné sur DocumentationInboundHeaders côté API. */
+  scopeManagerId: 'X-Scope-Manager-Id',
+  scopeCoachId: 'X-Scope-Coach-Id',
 } as const;

@@ -1,6 +1,6 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, catchError, throwError } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import type {
@@ -10,6 +10,7 @@ import type {
   DirectoryUserDto,
   DocumentRequestDto,
   DocumentTypeDto,
+  OrganizationalUnitSummaryDto,
   PagedResponse,
 } from '../../shared/models/api.models';
 
@@ -48,6 +49,76 @@ export class DocumentationDataApiService {
 
   getDirectoryUsers(): Observable<DirectoryUserDto[]> {
     return this.http.get<DirectoryUserDto[]>(`${this.dataRoot}/users`);
+  }
+
+  getOrganisationPoles(): Observable<OrganizationalUnitSummaryDto[]> {
+    return this.getWithOrgPathFallback<OrganizationalUnitSummaryDto[]>(
+      'organisation/poles',
+      'organization/poles',
+    );
+  }
+
+  getCellulesByPole(poleId: string): Observable<OrganizationalUnitSummaryDto[]> {
+    const params = new HttpParams().set('poleId', poleId);
+    return this.getWithOrgPathFallback<OrganizationalUnitSummaryDto[]>(
+      'organisation/cellules',
+      'organization/cellules',
+      params,
+    );
+  }
+
+  getDepartementsByCellule(celluleId: string): Observable<OrganizationalUnitSummaryDto[]> {
+    const params = new HttpParams().set('celluleId', celluleId);
+    return this.getWithOrgPathFallback<OrganizationalUnitSummaryDto[]>(
+      'organisation/departements',
+      'organization/departements',
+      params,
+    );
+  }
+
+  /** Si la route FR retourne 404, tente l’alias US (même contrat backend). */
+  private getWithOrgPathFallback<T>(pathFr: string, pathUs: string, params?: HttpParams): Observable<T> {
+    const urlFr = `${this.dataRoot}/${pathFr}`;
+    const urlUs = `${this.dataRoot}/${pathUs}`;
+    const opts = params ? { params } : {};
+    return this.http.get<T>(urlFr, opts).pipe(
+      catchError((err: unknown) => {
+        const status = err instanceof HttpErrorResponse ? err.status : 0;
+        if (status === 404) {
+          return this.http.get<T>(urlUs, opts);
+        }
+        return throwError(() => err);
+      }),
+    );
+  }
+
+  getUsersByRoleAndOrg(
+    role: string,
+    poleId: string,
+    celluleId: string,
+    departementId: string,
+  ): Observable<DirectoryUserDto[]> {
+    const params = new HttpParams()
+      .set('role', role)
+      .set('poleId', poleId)
+      .set('celluleId', celluleId)
+      .set('departementId', departementId);
+    return this.http.get<DirectoryUserDto[]>(`${this.dataRoot}/users/by-role-org`, { params });
+  }
+
+  getManagersByDepartement(departementId: string): Observable<DirectoryUserDto[]> {
+    const params = new HttpParams().set('departementId', departementId);
+    return this.http.get<DirectoryUserDto[]>(`${this.dataRoot}/users/managers`, { params });
+  }
+
+  getCoachsByManager(managerId: string, departementId: string): Observable<DirectoryUserDto[]> {
+    const params = new HttpParams().set('managerId', managerId).set('departementId', departementId);
+    return this.http.get<DirectoryUserDto[]>(`${this.dataRoot}/users/coaches`, { params });
+  }
+
+  getPilotesByCoach(coachId: string, departementId: string): Observable<DirectoryUserDto[]> {
+    const params = new HttpParams().set('coachId', coachId).set('departementId', departementId);
+    return this.http.get<DirectoryUserDto[]>(`${this.dataRoot}/users/pilotes`, { params });
   }
 
   getDirectoryUserMe(): Observable<DirectoryUserDto> {

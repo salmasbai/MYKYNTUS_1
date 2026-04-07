@@ -35,6 +35,7 @@ builder.Services.AddSingleton<DocumentationInMemoryStore>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<DocumentationCorrelationContext>();
 builder.Services.AddScoped<DocumentationUserContext>();
+builder.Services.AddScoped<IDocumentationTenantAccessor, DocumentationTenantAccessor>();
 builder.Services.AddScoped<DocumentationWorkflowService>();
 
 var documentationCs = builder.Configuration.GetConnectionString("Documentation")
@@ -52,6 +53,8 @@ if (string.IsNullOrWhiteSpace(csb.SearchPath))
     csb.SearchPath = "documentation, public";
 
 const string DocEnum = "documentation";
+// Enums PostgreSQL : MapEnum sur NpgsqlDataSource (recommandé). Ne pas ajouter NpgsqlConnection.GlobalTypeMapper :
+// obsolète, et en conflit avec cette source dédiée + EF HasPostgresEnum / HasColumnType.
 var documentationDataSourceBuilder = new NpgsqlDataSourceBuilder(csb.ConnectionString);
 documentationDataSourceBuilder.MapEnum<DocumentRequestStatus>($"{DocEnum}.document_request_status");
 documentationDataSourceBuilder.MapEnum<GeneratedDocumentStatus>($"{DocEnum}.generated_document_status");
@@ -67,6 +70,15 @@ builder.Services.AddDbContext<DocumentationDbContext>((sp, options) =>
     options.UseNpgsql(sp.GetRequiredService<NpgsqlDataSource>(), npgsql =>
     {
         npgsql.MigrationsHistoryTable("__ef_migrations_history", "documentation");
+        // EF Core 9+ : MapEnum sur le builder EF (en plus de NpgsqlDataSourceBuilder.MapEnum).
+        // Sans cela, EF peut encore matérialiser les colonnes enum PostgreSQL comme Int32 → InvalidCastException.
+        const string docSchema = "documentation";
+        npgsql.MapEnum<AppRole>("app_role", docSchema);
+        npgsql.MapEnum<DocumentRequestStatus>("document_request_status", docSchema);
+        npgsql.MapEnum<GeneratedDocumentStatus>("generated_document_status", docSchema);
+        npgsql.MapEnum<WorkflowNotificationKey>("workflow_notification_key", docSchema);
+        npgsql.MapEnum<WorkflowActionKey>("workflow_action_key", docSchema);
+        npgsql.MapEnum<StorageType>("storage_type", docSchema);
     });
     options.UseSnakeCaseNamingConvention();
 });
@@ -76,6 +88,7 @@ var app = builder.Build();
 app.UseMiddleware<UnhandledExceptionMiddleware>();
 app.UseCors("devCors");
 app.UseMiddleware<DocumentationCorrelationMiddleware>();
+// Identité par en-têtes (X-User-Id, X-User-Role, X-Tenant-Id) → DocumentationUserContext (scoped), sans JWT dans ce service.
 app.UseMiddleware<DocumentationUserContextMiddleware>();
 
 app.MapGet("/health", () => Results.Json(new { status = "Healthy", service = "documentation" }));

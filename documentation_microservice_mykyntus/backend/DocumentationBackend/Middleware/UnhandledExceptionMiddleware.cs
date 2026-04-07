@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
 using System.Text.Json;
 using DocumentationBackend.Context;
@@ -26,6 +27,36 @@ public sealed class UnhandledExceptionMiddleware(
         }
         catch (Exception ex)
         {
+            #region agent log
+            try
+            {
+                // Extension .ndjson (pas .log) : *.log est dans .gitignore → l’explorateur masque souvent le fichier.
+                var logPath = Path.GetFullPath(Path.Combine(environment.ContentRootPath, "debug-4b4045.ndjson"));
+                var line = JsonSerializer.Serialize(new
+                {
+                    sessionId = "4b4045",
+                    timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                    location = "UnhandledExceptionMiddleware.InvokeAsync",
+                    message = ex.Message,
+                    hypothesisId = "H500",
+                    data = new
+                    {
+                        exceptionType = ex.GetType().FullName,
+                        path = context.Request.Path.Value,
+                        postgresSqlState = FindPostgresException(ex)?.SqlState,
+                    },
+                });
+                File.AppendAllText(logPath, line + Environment.NewLine);
+                logger.LogWarning(
+                    "Debug session 4b4045 : trace NDJSON appendue → {LogPath}",
+                    logPath);
+            }
+            catch (Exception logEx)
+            {
+                logger.LogWarning(logEx, "Impossible d’écrire debug-4b4045.ndjson (ContentRoot={Root})", environment.ContentRootPath);
+            }
+            #endregion
+
             IDisposable? logScope = null;
             if (context.Items.TryGetValue(DocumentationCorrelationMiddleware.CorrelationIdItemKey, out var corrObj)
                 && corrObj is Guid correlationGuid)

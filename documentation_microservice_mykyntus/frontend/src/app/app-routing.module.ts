@@ -8,11 +8,6 @@ const routes: Routes = [
     loadChildren: () =>
       import('./documentation-react/documentation-react.module').then((m) => m.DocumentationReactModule),
   },
-  {
-    path: 'documentation',
-    loadChildren: () =>
-      import('./features/documentation/documentation.module').then((m) => m.DocumentationModule),
-  },
   { path: '**', redirectTo: 'dashboard' },
 ];
 

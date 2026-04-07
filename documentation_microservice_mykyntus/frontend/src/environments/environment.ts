@@ -6,6 +6,8 @@ import { DocumentationHeaders } from '../app/core/constants/documentation-header
  */
 export const environment = {
   production: false,
+  /** Barre de sélection rôle / utilisateur (sans login). Désactivé en build production. */
+  documentationDevToolsEnabled: true,
   apiBaseUrl: 'http://localhost:5002',
   documentationUserContextHeaders: {
     [DocumentationHeaders.userId]: '11111111-1111-4111-8111-111111111101',

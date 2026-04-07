@@ -10,6 +10,7 @@ namespace DocumentationBackend.Services;
 public class DocumentationWorkflowService(
     DocumentationDbContext db,
     DocumentationUserContext userContext,
+    IDocumentationTenantAccessor tenantAccessor,
     DocumentationCorrelationContext correlationContext,
     ILogger<DocumentationWorkflowService> logger)
 {
@@ -21,27 +22,35 @@ public class DocumentationWorkflowService(
         var actorUserId = userContext.UserId!.Value;
         var role = userContext.Role!.Value;
 
-        if (!WorkflowActionPolicy.CanValidate(role))
-        {
-            LogWorkflowDenied("Validate", documentRequestId, actorUserId, role, "Rôle non autorisé pour la validation.");
-            return (null, StatusCodes.Status403Forbidden, "Rôle non autorisé pour la validation.");
-        }
+        if (WorkflowBusinessRules.EnsureCanValidate(role) is { } denyValidate)
+            return FromFailure(denyValidate, "Validate", documentRequestId, actorUserId, role);
 
-        var (entity, errMsg) = await TryLoadRequestAsync(documentRequestId, ct);
-        if (entity is null)
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+        try
         {
-            LogWorkflowDenied("Validate", documentRequestId, actorUserId, role, errMsg ?? "Demande introuvable.");
-            return (null, StatusCodes.Status404NotFound, errMsg ?? "Demande introuvable.");
-        }
+            var (entity, errMsg) = await TryLoadRequestAsync(documentRequestId, ct);
+            if (entity is null)
+            {
+                await tx.RollbackAsync(ct);
+                LogWorkflowDenied("Validate", documentRequestId, actorUserId, role, errMsg ?? "Demande introuvable.");
+                return (null, StatusCodes.Status404NotFound, errMsg ?? "Demande introuvable.");
+            }
 
-        if (entity.Status != DocumentRequestStatus.Pending)
+            if (WorkflowBusinessRules.EnsurePending(entity.Status, "validate") is { } denyState)
+            {
+                await tx.RollbackAsync(ct);
+                return FromFailure(denyState, "Validate", documentRequestId, actorUserId, role);
+            }
+
+            AppendAudit(actorUserId, "WORKFLOW_VALIDATE", documentRequestId, comment, true, null, entity.RequestNumber);
+            await db.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+        }
+        catch
         {
-            LogWorkflowDenied("Validate", documentRequestId, actorUserId, role, "La demande n'est plus en attente.");
-            return (null, StatusCodes.Status409Conflict, "La demande n'est plus en attente.");
+            await tx.RollbackAsync(ct);
+            throw;
         }
-
-        AppendAudit(actorUserId, "WORKFLOW_VALIDATE", documentRequestId, comment, true, null);
-        await db.SaveChangesAsync(ct);
 
         var refreshed = await LoadRequestRowAsync(documentRequestId, ct);
         LogWorkflowCompleted("Validate", documentRequestId, actorUserId, role);
@@ -55,33 +64,41 @@ public class DocumentationWorkflowService(
         var actorUserId = userContext.UserId!.Value;
         var role = userContext.Role!.Value;
 
-        if (!WorkflowActionPolicy.CanApproveOrReject(role))
+        if (WorkflowBusinessRules.EnsureCanApproveOrReject(role) is { } denyRole)
+            return FromFailure(denyRole, "Approve", documentRequestId, actorUserId, role);
+
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+        try
         {
-            LogWorkflowDenied("Approve", documentRequestId, actorUserId, role, "Seule la RH peut approuver.");
-            return (null, StatusCodes.Status403Forbidden, "Seule la RH peut approuver.");
-        }
+            var (entity, errMsg) = await TryLoadRequestAsync(documentRequestId, ct);
+            if (entity is null)
+            {
+                await tx.RollbackAsync(ct);
+                LogWorkflowDenied("Approve", documentRequestId, actorUserId, role, errMsg ?? "Demande introuvable.");
+                return (null, StatusCodes.Status404NotFound, errMsg ?? "Demande introuvable.");
+            }
 
-        var (entity, errMsg) = await TryLoadRequestAsync(documentRequestId, ct);
-        if (entity is null)
+            if (WorkflowBusinessRules.EnsurePending(entity.Status, "approve") is { } denyState)
+            {
+                await tx.RollbackAsync(ct);
+                return FromFailure(denyState, "Approve", documentRequestId, actorUserId, role);
+            }
+
+            var now = DateTimeOffset.UtcNow;
+            entity.Status = DocumentRequestStatus.Approved;
+            entity.DecidedByUserId = actorUserId;
+            entity.DecidedAt = now;
+            entity.UpdatedAt = now;
+
+            AppendAudit(actorUserId, "WORKFLOW_APPROVE", documentRequestId, null, true, null, entity.RequestNumber);
+            await db.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+        }
+        catch
         {
-            LogWorkflowDenied("Approve", documentRequestId, actorUserId, role, errMsg ?? "Demande introuvable.");
-            return (null, StatusCodes.Status404NotFound, errMsg ?? "Demande introuvable.");
+            await tx.RollbackAsync(ct);
+            throw;
         }
-
-        if (entity.Status != DocumentRequestStatus.Pending)
-        {
-            LogWorkflowDenied("Approve", documentRequestId, actorUserId, role, "La demande n'est plus en attente.");
-            return (null, StatusCodes.Status409Conflict, "La demande n'est plus en attente.");
-        }
-
-        var now = DateTimeOffset.UtcNow;
-        entity.Status = DocumentRequestStatus.Approved;
-        entity.DecidedByUserId = actorUserId;
-        entity.DecidedAt = now;
-        entity.UpdatedAt = now;
-
-        AppendAudit(actorUserId, "WORKFLOW_APPROVE", documentRequestId, null, true, null);
-        await db.SaveChangesAsync(ct);
 
         var refreshed = await LoadRequestRowAsync(documentRequestId, ct);
         LogWorkflowCompleted("Approve", documentRequestId, actorUserId, role);
@@ -93,44 +110,64 @@ public class DocumentationWorkflowService(
         string rejectionReason,
         CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(rejectionReason))
-            return (null, StatusCodes.Status400BadRequest, "rejectionReason obligatoire.");
+        if (WorkflowBusinessRules.EnsureRejectReason(rejectionReason) is { } denyReason)
+            return (null, denyReason.StatusCode, denyReason.Message);
 
         var actorUserId = userContext.UserId!.Value;
         var role = userContext.Role!.Value;
 
-        if (!WorkflowActionPolicy.CanApproveOrReject(role))
+        if (WorkflowBusinessRules.EnsureCanApproveOrReject(role) is { } denyRole)
+            return FromFailure(denyRole, "Reject", documentRequestId, actorUserId, role);
+
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+        try
         {
-            LogWorkflowDenied("Reject", documentRequestId, actorUserId, role, "Seule la RH peut rejeter.");
-            return (null, StatusCodes.Status403Forbidden, "Seule la RH peut rejeter.");
-        }
+            var (entity, errMsg) = await TryLoadRequestAsync(documentRequestId, ct);
+            if (entity is null)
+            {
+                await tx.RollbackAsync(ct);
+                LogWorkflowDenied("Reject", documentRequestId, actorUserId, role, errMsg ?? "Demande introuvable.");
+                return (null, StatusCodes.Status404NotFound, errMsg ?? "Demande introuvable.");
+            }
 
-        var (entity, errMsg) = await TryLoadRequestAsync(documentRequestId, ct);
-        if (entity is null)
+            if (WorkflowBusinessRules.EnsurePending(entity.Status, "reject") is { } denyState)
+            {
+                await tx.RollbackAsync(ct);
+                return FromFailure(denyState, "Reject", documentRequestId, actorUserId, role);
+            }
+
+            var now = DateTimeOffset.UtcNow;
+            var trimmed = rejectionReason.Trim();
+            entity.Status = DocumentRequestStatus.Rejected;
+            entity.DecidedByUserId = actorUserId;
+            entity.DecidedAt = now;
+            entity.RejectionReason = trimmed;
+            entity.UpdatedAt = now;
+
+            AppendAudit(actorUserId, "WORKFLOW_REJECT", documentRequestId, trimmed, true, null, entity.RequestNumber);
+            await db.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+        }
+        catch
         {
-            LogWorkflowDenied("Reject", documentRequestId, actorUserId, role, errMsg ?? "Demande introuvable.");
-            return (null, StatusCodes.Status404NotFound, errMsg ?? "Demande introuvable.");
+            await tx.RollbackAsync(ct);
+            throw;
         }
-
-        if (entity.Status != DocumentRequestStatus.Pending)
-        {
-            LogWorkflowDenied("Reject", documentRequestId, actorUserId, role, "La demande n'est plus en attente.");
-            return (null, StatusCodes.Status409Conflict, "La demande n'est plus en attente.");
-        }
-
-        var now = DateTimeOffset.UtcNow;
-        entity.Status = DocumentRequestStatus.Rejected;
-        entity.DecidedByUserId = actorUserId;
-        entity.DecidedAt = now;
-        entity.RejectionReason = rejectionReason.Trim();
-        entity.UpdatedAt = now;
-
-        AppendAudit(actorUserId, "WORKFLOW_REJECT", documentRequestId, rejectionReason.Trim(), true, null);
-        await db.SaveChangesAsync(ct);
 
         var refreshed = await LoadRequestRowAsync(documentRequestId, ct);
         LogWorkflowCompleted("Reject", documentRequestId, actorUserId, role, rejectionReason.Trim());
         return (DocumentRequestMapper.ToResponse(refreshed, refreshed.DocumentType, userContext), StatusCodes.Status200OK, null);
+    }
+
+    private (DocumentRequestResponse? response, int statusCode, string? error) FromFailure(
+        WorkflowFailure fail,
+        string action,
+        Guid documentRequestId,
+        Guid userId,
+        AppRole role)
+    {
+        LogWorkflowDenied(action, documentRequestId, userId, role, fail.Message);
+        return (null, fail.StatusCode, fail.Message);
     }
 
     private async Task<(DocumentRequest? Entity, string? Error)> TryLoadRequestAsync(Guid id, CancellationToken ct)
@@ -150,7 +187,7 @@ public class DocumentationWorkflowService(
             documentRequestId,
             userId,
             role,
-            userContext.TenantId ?? "",
+            tenantAccessor.ResolvedTenantId,
             correlationContext.CorrelationId,
             extra ?? "");
 
@@ -161,7 +198,7 @@ public class DocumentationWorkflowService(
             documentRequestId,
             userId,
             role,
-            userContext.TenantId ?? "",
+            tenantAccessor.ResolvedTenantId,
             correlationContext.CorrelationId,
             reason);
 
@@ -171,11 +208,19 @@ public class DocumentationWorkflowService(
             .Include(r => r.DocumentType)
             .FirstAsync(r => r.Id == id, ct);
 
-    private void AppendAudit(Guid? actorUserId, string action, Guid entityId, string? details, bool success, string? errorMessage)
+    private void AppendAudit(
+        Guid? actorUserId,
+        string action,
+        Guid entityId,
+        string? details,
+        bool success,
+        string? errorMessage,
+        string? requestNumber)
     {
         db.AuditLogs.Add(new AuditLog
         {
             Id = Guid.NewGuid(),
+            TenantId = tenantAccessor.ResolvedTenantId,
             OccurredAt = DateTimeOffset.UtcNow,
             ActorUserId = actorUserId,
             Action = action,
@@ -185,6 +230,7 @@ public class DocumentationWorkflowService(
             Details = details,
             Success = success,
             ErrorMessage = errorMessage,
+            RequestNumber = requestNumber,
         });
     }
 }

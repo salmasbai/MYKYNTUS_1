@@ -5,6 +5,7 @@ import { expand, reduce } from 'rxjs/operators';
 import { DocumentationDataApiService } from '../../core/services/documentation-data-api.service';
 import type {
   AuditLogDto,
+  CreateDocumentRequestPayload,
   DocumentRequestDto,
   DocumentTypeDto,
   PagedResponse,
@@ -20,6 +21,10 @@ export class DocumentationApiService {
 
   getDocTypesForCatalog(): Observable<DocumentTypeDto[]> {
     return this.data.getDocumentTypes();
+  }
+
+  createDocumentRequest(body: CreateDocumentRequestPayload): Observable<DocumentRequestDto> {
+    return this.data.createDocumentRequest(body);
   }
 
   getDataDocumentRequests(

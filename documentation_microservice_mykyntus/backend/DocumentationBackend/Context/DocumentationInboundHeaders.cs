@@ -17,4 +17,9 @@ public static class DocumentationInboundHeaders
 
     /// <summary>Corrélation requête / logs / audit (UUID recommandé).</summary>
     public const string CorrelationId = "X-Correlation-Id";
+
+    /// <summary>Périmètre organisationnel (optionnel) — filtrage des données selon la hiérarchie.</summary>
+    public const string ScopeManagerId = "X-Scope-Manager-Id";
+
+    public const string ScopeCoachId = "X-Scope-Coach-Id";
 }

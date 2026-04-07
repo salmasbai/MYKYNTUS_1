@@ -67,6 +67,10 @@ public class WorkflowStepAction
 public class DocumentRequest
 {
     public Guid Id { get; set; }
+
+    /// <summary>Isolation multi-tenant (aligné sur <c>document_requests.tenant_id</c>).</summary>
+    public string TenantId { get; set; } = "";
+
     public string? RequestNumber { get; set; }
     public Guid RequesterUserId { get; set; }
     public Guid? BeneficiaryUserId { get; set; }
@@ -184,6 +188,10 @@ public class DmsStorageConfiguration
 public class AuditLog
 {
     public Guid Id { get; set; }
+
+    /// <summary>Isolation multi-tenant (aligné sur <c>audit_logs.tenant_id</c>).</summary>
+    public string TenantId { get; set; } = "";
+
     public DateTimeOffset OccurredAt { get; set; }
     public Guid? ActorUserId { get; set; }
     public string Action { get; set; } = "";
@@ -195,6 +203,28 @@ public class AuditLog
     public string? Details { get; set; }
     public bool? Success { get; set; }
     public string? ErrorMessage { get; set; }
+
+    /// <summary>Optionnel — enrichissement post 004 (cible métier).</summary>
+    public Guid? TargetUserId { get; set; }
+
+    /// <summary>Optionnel — traçabilité lisible (numéro REQ).</summary>
+    public string? RequestNumber { get; set; }
+}
+
+/// <summary>Unité organisationnelle : pôle → cellule → département (table <c>organisation_units</c>).</summary>
+public class OrganisationUnit
+{
+    public Guid Id { get; set; }
+    public string TenantId { get; set; } = "";
+    public Guid? ParentId { get; set; }
+
+    /// <summary><c>POLE</c>, <c>CELLULE</c> ou <c>DEPARTEMENT</c> (schéma SQL).</summary>
+    public string UnitType { get; set; } = "";
+
+    public string Code { get; set; } = "";
+    public string Name { get; set; } = "";
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; }
 }
 
 /// <summary>Annuaire utilisateurs (données réelles — table <c>directory_users</c>).</summary>
@@ -206,12 +236,27 @@ public class DirectoryUser
     public string Nom { get; set; } = "";
     public string Email { get; set; } = "";
     public AppRole Role { get; set; }
+
+    /// <summary>Rôle coach : manager d’agence (hiérarchie métier).</summary>
+    public Guid? ManagerId { get; set; }
+
+    /// <summary>Rôle pilote : coach référent.</summary>
+    public Guid? CoachId { get; set; }
+
+    /// <summary>Rôle manager : RP de tutelle (chaîne métier Manager → RP).</summary>
+    public Guid? RpId { get; set; }
+
+    public Guid PoleId { get; set; }
+    public Guid CelluleId { get; set; }
+    public Guid DepartementId { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
 }
 
 public class DocumentRequestSequence
 {
+    public string TenantId { get; set; } = "";
     public int Year { get; set; }
     public int LastValue { get; set; }
 }

@@ -5,16 +5,24 @@ import { catchError, map, of } from 'rxjs';
 
 import { DocumentationDataApiService } from '../../../core/services/documentation-data-api.service';
 import { DocumentationIdentityService } from '../../../core/services/documentation-identity.service';
+import { environment } from '../../../../environments/environment';
 import { mapApiRoleToDocumentationRole } from '../../lib/map-api-documentation-role';
 import { AppContextService } from '../../services/app-context.service';
 import { DocumentationNavigationService } from '../../services/documentation-navigation.service';
+import { DevSelectorComponent } from '../dev-selector/dev-selector.component';
 import { DocumentationHeaderComponent } from '../documentation-header/documentation-header.component';
 import { DocumentationSidebarComponent } from '../documentation-sidebar/documentation-sidebar.component';
 
 @Component({
   selector: 'app-documentation-shell',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, DocumentationSidebarComponent, DocumentationHeaderComponent],
+  imports: [
+    CommonModule,
+    RouterOutlet,
+    DevSelectorComponent,
+    DocumentationSidebarComponent,
+    DocumentationHeaderComponent,
+  ],
   templateUrl: './documentation-shell.component.html',
 })
 export class DocumentationShellComponent implements OnInit {
@@ -34,6 +42,20 @@ export class DocumentationShellComponent implements OnInit {
       next: (list) => this.identity.setDirectoryUsers(list),
       error: () => this.identity.setDirectoryUsers([]),
     });
+
+    const devTools = environment.documentationDevToolsEnabled && !environment.production;
+    if (devTools) {
+      const p = this.identity.profile$.value;
+      if (p?.role) {
+        try {
+          this.nav.syncRoleFromIdentity(mapApiRoleToDocumentationRole(p.role));
+        } catch {
+          /* rôle inconnu */
+        }
+      }
+      return;
+    }
+
     this.data
       .getDirectoryUserMe()
       .pipe(catchError(() => of(null)))

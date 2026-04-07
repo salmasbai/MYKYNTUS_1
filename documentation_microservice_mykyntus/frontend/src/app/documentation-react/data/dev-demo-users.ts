@@ -1,0 +1,106 @@
+import type { DirectoryUserDto } from '../../shared/models/api.models';
+
+/** Triplet organisationnel aligné sur le seed SQL (Casa — ventes terrain) — repli typage uniquement. */
+const DEMO_ORG = {
+  poleId: 'f0000001-0001-4001-8001-000000000001',
+  celluleId: 'f0000001-0001-4001-8001-000000000002',
+  departementId: 'f0000001-0001-4001-8001-000000000004',
+} as const;
+
+/** Conservé pour compatibilité ; le sélecteur dev s’appuie sur l’API (plus de fusion dans l’UI). */
+export const DEV_DEMO_USERS: readonly DirectoryUserDto[] = [
+  {
+    ...DEMO_ORG,
+    id: '11111111-1111-4111-8111-111111111101',
+    prenom: 'Yasmine',
+    nom: 'El Amrani',
+    email: 'yasmine.elamrani@demo.local',
+    role: 'pilote',
+    coachId: '55555555-5555-4555-8555-555555555501',
+  },
+  {
+    ...DEMO_ORG,
+    id: '11111111-1111-4111-8111-111111111102',
+    prenom: 'Omar',
+    nom: 'Benali',
+    email: 'omar.benali@demo.local',
+    role: 'pilote',
+    coachId: '55555555-5555-4555-8555-555555555501',
+  },
+  {
+    ...DEMO_ORG,
+    id: '11111111-1111-4111-8111-111111111103',
+    prenom: 'Salma',
+    nom: 'Idrissi',
+    email: 'salma.idrissi@demo.local',
+    role: 'pilote',
+    coachId: '55555555-5555-4555-8555-555555555502',
+  },
+  {
+    ...DEMO_ORG,
+    id: '11111111-1111-4111-8111-111111111104',
+    prenom: 'Ahmed',
+    nom: 'Ouazzani',
+    email: 'ahmed.ouazzani@demo.local',
+    role: 'pilote',
+    coachId: '55555555-5555-4555-8555-555555555502',
+  },
+  {
+    ...DEMO_ORG,
+    id: '55555555-5555-4555-8555-555555555501',
+    prenom: 'Mehdi',
+    nom: 'Sefrioui',
+    email: 'mehdi.sefrioui@demo.local',
+    role: 'coach',
+    managerId: '22222222-2222-4222-8222-222222222201',
+  },
+  {
+    ...DEMO_ORG,
+    id: '55555555-5555-4555-8555-555555555502',
+    prenom: 'Yassine',
+    nom: 'Bennani',
+    email: 'yassine.bennani@demo.local',
+    role: 'coach',
+    managerId: '22222222-2222-4222-8222-222222222201',
+  },
+  {
+    ...DEMO_ORG,
+    id: '22222222-2222-4222-8222-222222222201',
+    prenom: 'Karim',
+    nom: 'Tazi',
+    email: 'karim.tazi@demo.local',
+    role: 'manager',
+  },
+  {
+    ...DEMO_ORG,
+    id: '66666666-6666-4666-8666-666666666601',
+    prenom: 'Houda',
+    nom: 'Mansouri',
+    email: 'houda.mansouri@demo.local',
+    role: 'rp',
+  },
+  {
+    ...DEMO_ORG,
+    id: '33333333-3333-4333-8333-333333333301',
+    prenom: 'Fatima',
+    nom: 'Alaoui',
+    email: 'fatima.alaoui@demo.local',
+    role: 'rh',
+  },
+  {
+    ...DEMO_ORG,
+    id: '77777777-7777-4777-8777-777777777701',
+    prenom: 'Youssef',
+    nom: 'El Alamy',
+    email: 'youssef.elalamy@demo.local',
+    role: 'admin',
+  },
+  {
+    ...DEMO_ORG,
+    id: '44444444-4444-4444-8444-444444444401',
+    prenom: 'Nadia',
+    nom: 'Berrada',
+    email: 'nadia.berrada@demo.local',
+    role: 'audit',
+  },
+];

@@ -3,9 +3,9 @@ using DocumentationBackend.Api;
 using DocumentationBackend.Context;
 using DocumentationBackend.Data;
 using DocumentationBackend.Data.Entities;
+using DocumentationBackend.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
 using Npgsql;
 
 namespace DocumentationBackend.Controllers;
@@ -18,9 +18,17 @@ namespace DocumentationBackend.Controllers;
 [Route("api/documentation/data")]
 public class DocumentationDataController(
     DocumentationDbContext db,
-    DocumentationUserContext userContext) : ControllerBase
+    DocumentationUserContext userContext,
+    IDocumentationTenantAccessor tenantAccessor) : ControllerBase
 {
     private const string PostgresUniqueViolationSqlState = "23505";
+
+    /// <summary>Libellé normalisé pour filtrer <c>unit_type</c> (comparaison en minuscules côté requête).</summary>
+    private const string OrgUnitTypePole = "pole";
+
+    private const string OrgUnitTypeCellule = "cellule";
+
+    private const string OrgUnitTypeDepartement = "departement";
 
     [HttpGet("document-types")]
     public async Task<ActionResult<IReadOnlyList<DocumentTypeResponse>>> GetDocumentTypes(CancellationToken ct)
@@ -42,6 +50,9 @@ public class DocumentationDataController(
         return rows;
     }
 
+    /// <summary>
+    /// Demandes paginées du tenant courant. Total 0 → 200 avec page vide. Erreurs SQL/mapping → middleware global.
+    /// </summary>
     [HttpGet("document-requests")]
     public async Task<ActionResult<PagedResponse<DocumentRequestResponse>>> GetDocumentRequests(
         [FromQuery] int page = 1,
@@ -112,6 +123,34 @@ public class DocumentationDataController(
         {
             var ids = DemoActors.GetUserIdsForRole(roleFilter.Value);
             baseQuery = baseQuery.Where(r => ids.Contains(r.RequesterUserId));
+        }
+
+        // Périmètre hiérarchique (manager / RP) : demandes des pilotes encadrés par le coach choisi.
+        if (userContext.ScopeCoachId.HasValue &&
+            userContext.Role is AppRole.Manager or AppRole.Rp)
+        {
+            var pilotIds = await db.DirectoryUsers.AsNoTracking()
+                .Where(u => u.CoachId == userContext.ScopeCoachId && u.Role == AppRole.Pilote)
+                .Select(u => u.Id)
+                .ToListAsync(ct);
+            baseQuery = pilotIds.Count > 0
+                ? baseQuery.Where(r => pilotIds.Contains(r.RequesterUserId))
+                : baseQuery.Where(static r => false);
+        }
+        else if (userContext.ScopeManagerId.HasValue && !userContext.ScopeCoachId.HasValue &&
+                 userContext.Role == AppRole.Rp)
+        {
+            var coachIds = await db.DirectoryUsers.AsNoTracking()
+                .Where(u => u.Role == AppRole.Coach && u.ManagerId == userContext.ScopeManagerId)
+                .Select(u => u.Id)
+                .ToListAsync(ct);
+            var pilotIds = await db.DirectoryUsers.AsNoTracking()
+                .Where(u => u.Role == AppRole.Pilote && u.CoachId.HasValue && coachIds.Contains(u.CoachId!.Value))
+                .Select(u => u.Id)
+                .ToListAsync(ct);
+            baseQuery = pilotIds.Count > 0
+                ? baseQuery.Where(r => pilotIds.Contains(r.RequesterUserId))
+                : baseQuery.Where(static r => false);
         }
 
         baseQuery = ApplyDocumentRequestSort(baseQuery, sortField, desc);
@@ -188,7 +227,7 @@ public class DocumentationDataController(
         string requestNumber;
         try
         {
-            requestNumber = await AllocateRequestNumberAsync(db, ct);
+            requestNumber = await DocumentRequestNumberingService.AllocateNextAsync(db, tenantAccessor.ResolvedTenantId, ct);
         }
         catch (Exception ex)
         {
@@ -200,6 +239,7 @@ public class DocumentationDataController(
         var entity = new DocumentRequest
         {
             Id = Guid.NewGuid(),
+            TenantId = tenantAccessor.ResolvedTenantId,
             RequestNumber = requestNumber,
             RequesterUserId = requesterId,
             BeneficiaryUserId = body.BeneficiaryUserId,
@@ -236,22 +276,6 @@ public class DocumentationDataController(
             typeRow = await db.DocumentTypes.AsNoTracking().FirstOrDefaultAsync(t => t.Id == entity.DocumentTypeId.Value, ct);
 
         return Ok(DocumentRequestMapper.ToResponse(entity, typeRow, userContext));
-    }
-
-    private static async Task<string> AllocateRequestNumberAsync(DocumentationDbContext db, CancellationToken ct)
-    {
-        var connection = (NpgsqlConnection)db.Database.GetDbConnection();
-        if (connection.State != ConnectionState.Open)
-            await connection.OpenAsync(ct);
-
-        await using var cmd = connection.CreateCommand();
-        if (db.Database.CurrentTransaction is { } efTx)
-            cmd.Transaction = (NpgsqlTransaction)efTx.GetDbTransaction();
-        cmd.CommandText = "SELECT documentation.next_document_request_number()";
-        var result = await cmd.ExecuteScalarAsync(ct);
-        if (result is not string s || string.IsNullOrWhiteSpace(s))
-            throw new InvalidOperationException("next_document_request_number a renvoyé une valeur vide.");
-        return s;
     }
 
     [HttpGet("audit-logs")]
@@ -318,20 +342,18 @@ public class DocumentationDataController(
         return new PagedResponse<AuditLogResponse>(items, total, page, pageSize);
     }
 
-    private static string ResolveDirectoryTenant(DocumentationUserContext ctx) =>
-        string.IsNullOrWhiteSpace(ctx.TenantId) ? "atlas-tech-demo" : ctx.TenantId.Trim();
-
-    /// <summary>Liste l’annuaire du tenant courant (en-tête <c>X-Tenant-Id</c> ou défaut démo).</summary>
+    /// <summary>
+    /// Liste l’annuaire du tenant courant (filtre global EF). Aucune ligne en base → 200 avec liste vide (pas d’erreur).
+    /// Les exceptions (ex. SQL) sont gérées par <c>UnhandledExceptionMiddleware</c> — pas de try/catch dupliqué ici.
+    /// </summary>
     [HttpGet("users")]
     public async Task<ActionResult<IReadOnlyList<DirectoryUserResponse>>> GetDirectoryUsers(CancellationToken ct)
     {
-        var tenant = ResolveDirectoryTenant(userContext);
         var rows = await db.DirectoryUsers.AsNoTracking()
-            .Where(u => u.TenantId == tenant)
             .OrderBy(u => u.Nom)
             .ThenBy(u => u.Prenom)
             .ToListAsync(ct);
-        return rows.Select(DirectoryUserMapper.ToResponse).ToList();
+        return await MapDirectoryUsersAsync(rows, ct);
     }
 
     /// <summary>Profil de l’utilisateur identifié par <c>X-User-Id</c>.</summary>
@@ -340,23 +362,182 @@ public class DocumentationDataController(
     {
         if (!userContext.UserId.HasValue)
             return Unauthorized();
-        var tenant = ResolveDirectoryTenant(userContext);
         var row = await db.DirectoryUsers.AsNoTracking()
-            .FirstOrDefaultAsync(u => u.Id == userContext.UserId.Value && u.TenantId == tenant, ct);
+            .FirstOrDefaultAsync(u => u.Id == userContext.UserId.Value, ct);
         if (row is null)
             return NotFound(new { message = "Utilisateur absent de l’annuaire pour ce tenant." });
-        return DirectoryUserMapper.ToResponse(row);
+        return await MapDirectoryUserAsync(row, ct);
     }
 
     [HttpGet("users/{id:guid}")]
     public async Task<ActionResult<DirectoryUserResponse>> GetDirectoryUser(Guid id, CancellationToken ct)
     {
-        var tenant = ResolveDirectoryTenant(userContext);
         var row = await db.DirectoryUsers.AsNoTracking()
-            .FirstOrDefaultAsync(u => u.Id == id && u.TenantId == tenant, ct);
+            .FirstOrDefaultAsync(u => u.Id == id, ct);
         if (row is null)
             return NotFound();
-        return DirectoryUserMapper.ToResponse(row);
+        return await MapDirectoryUserAsync(row, ct);
+    }
+
+    [HttpGet("organisation/poles")]
+    public Task<ActionResult<IReadOnlyList<OrganizationalUnitSummary>>> GetPoles(CancellationToken ct) =>
+        QueryOrganisationPolesAsync(ct);
+
+    /// <summary>Alias orthographe US (même handler) — utile si un proxy ou une ancienne config attend <c>organization</c>.</summary>
+    [HttpGet("organization/poles")]
+    public Task<ActionResult<IReadOnlyList<OrganizationalUnitSummary>>> GetPolesOrganizationSpelling(CancellationToken ct) =>
+        QueryOrganisationPolesAsync(ct);
+
+    [HttpGet("organisation/cellules")]
+    public Task<ActionResult<IReadOnlyList<OrganizationalUnitSummary>>> GetCellulesByPole([FromQuery] Guid poleId, CancellationToken ct) =>
+        QueryOrganisationCellulesByPoleAsync(poleId, ct);
+
+    [HttpGet("organization/cellules")]
+    public Task<ActionResult<IReadOnlyList<OrganizationalUnitSummary>>> GetCellulesByPoleOrganizationSpelling(
+        [FromQuery] Guid poleId,
+        CancellationToken ct) =>
+        QueryOrganisationCellulesByPoleAsync(poleId, ct);
+
+    [HttpGet("organisation/departements")]
+    public Task<ActionResult<IReadOnlyList<OrganizationalUnitSummary>>> GetDepartementsByCellule(
+        [FromQuery] Guid celluleId,
+        CancellationToken ct) =>
+        QueryOrganisationDepartementsByCelluleAsync(celluleId, ct);
+
+    [HttpGet("organization/departements")]
+    public Task<ActionResult<IReadOnlyList<OrganizationalUnitSummary>>> GetDepartementsByCelluleOrganizationSpelling(
+        [FromQuery] Guid celluleId,
+        CancellationToken ct) =>
+        QueryOrganisationDepartementsByCelluleAsync(celluleId, ct);
+
+    private async Task<ActionResult<IReadOnlyList<OrganizationalUnitSummary>>> QueryOrganisationPolesAsync(CancellationToken ct)
+    {
+        var rows = await db.OrganisationUnits.AsNoTracking()
+            .Where(u => u.UnitType != null && u.UnitType.ToLower() == OrgUnitTypePole)
+            .OrderBy(u => u.Name)
+            .ToListAsync(ct);
+        return rows.Select(u => new OrganizationalUnitSummary(u.Id.ToString(), u.Code, u.Name, u.UnitType)).ToList();
+    }
+
+    private async Task<ActionResult<IReadOnlyList<OrganizationalUnitSummary>>> QueryOrganisationCellulesByPoleAsync(
+        Guid poleId,
+        CancellationToken ct)
+    {
+        var rows = await db.OrganisationUnits.AsNoTracking()
+            .Where(u => u.UnitType != null && u.UnitType.ToLower() == OrgUnitTypeCellule && u.ParentId == poleId)
+            .OrderBy(u => u.Name)
+            .ToListAsync(ct);
+        return rows.Select(u => new OrganizationalUnitSummary(u.Id.ToString(), u.Code, u.Name, u.UnitType)).ToList();
+    }
+
+    private async Task<ActionResult<IReadOnlyList<OrganizationalUnitSummary>>> QueryOrganisationDepartementsByCelluleAsync(
+        Guid celluleId,
+        CancellationToken ct)
+    {
+        var rows = await db.OrganisationUnits.AsNoTracking()
+            .Where(u => u.UnitType != null && u.UnitType.ToLower() == OrgUnitTypeDepartement && u.ParentId == celluleId)
+            .OrderBy(u => u.Name)
+            .ToListAsync(ct);
+        return rows.Select(u => new OrganizationalUnitSummary(u.Id.ToString(), u.Code, u.Name, u.UnitType)).ToList();
+    }
+
+    /// <summary>Utilisateurs filtrés par rôle applicatif et rattachement organisationnel (pôle, cellule, département).</summary>
+    [HttpGet("users/by-role-org")]
+    public async Task<ActionResult<IReadOnlyList<DirectoryUserResponse>>> GetUsersByRoleAndOrg(
+        [FromQuery] string role,
+        [FromQuery] Guid poleId,
+        [FromQuery] Guid celluleId,
+        [FromQuery] Guid departementId,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(role) || !AppRoleHeaderParser.TryParse(role, out var appRole))
+            return BadRequest(new { message = "role invalide (pilote, coach, manager, rp, rh, admin, audit)." });
+
+        var rows = await db.DirectoryUsers.AsNoTracking()
+            .Where(u =>
+                u.Role == appRole &&
+                u.PoleId == poleId &&
+                u.CelluleId == celluleId &&
+                u.DepartementId == departementId)
+            .OrderBy(u => u.Nom)
+            .ThenBy(u => u.Prenom)
+            .ToListAsync(ct);
+        return await MapDirectoryUsersAsync(rows, ct);
+    }
+
+    /// <summary>Managers rattachés au département (hiérarchie métier + même triplet org).</summary>
+    [HttpGet("users/managers")]
+    public async Task<ActionResult<IReadOnlyList<DirectoryUserResponse>>> GetManagersByDepartement(
+        [FromQuery] Guid departementId,
+        CancellationToken ct)
+    {
+        var rows = await db.DirectoryUsers.AsNoTracking()
+            .Where(u => u.Role == AppRole.Manager && u.DepartementId == departementId)
+            .OrderBy(u => u.Nom)
+            .ThenBy(u => u.Prenom)
+            .ToListAsync(ct);
+        return await MapDirectoryUsersAsync(rows, ct);
+    }
+
+    /// <summary>Coachs sous un manager (optionnellement filtrés par département).</summary>
+    [HttpGet("users/coaches")]
+    public async Task<ActionResult<IReadOnlyList<DirectoryUserResponse>>> GetCoachsByManager(
+        [FromQuery] Guid managerId,
+        [FromQuery] Guid? departementId,
+        CancellationToken ct)
+    {
+        var q = db.DirectoryUsers.AsNoTracking()
+            .Where(u => u.Role == AppRole.Coach && u.ManagerId == managerId);
+        if (departementId.HasValue)
+            q = q.Where(u => u.DepartementId == departementId.Value);
+        var rows = await q.OrderBy(u => u.Nom).ThenBy(u => u.Prenom).ToListAsync(ct);
+        return await MapDirectoryUsersAsync(rows, ct);
+    }
+
+    /// <summary>Pilotes rattachés à un coach (optionnellement filtrés par département).</summary>
+    [HttpGet("users/pilotes")]
+    public async Task<ActionResult<IReadOnlyList<DirectoryUserResponse>>> GetPilotesByCoach(
+        [FromQuery] Guid coachId,
+        [FromQuery] Guid? departementId,
+        CancellationToken ct)
+    {
+        var q = db.DirectoryUsers.AsNoTracking()
+            .Where(u => u.Role == AppRole.Pilote && u.CoachId == coachId);
+        if (departementId.HasValue)
+            q = q.Where(u => u.DepartementId == departementId.Value);
+        var rows = await q.OrderBy(u => u.Nom).ThenBy(u => u.Prenom).ToListAsync(ct);
+        return await MapDirectoryUsersAsync(rows, ct);
+    }
+
+    private async Task<IReadOnlyList<DirectoryUserResponse>> MapDirectoryUsersAsync(IReadOnlyList<DirectoryUser> rows, CancellationToken ct)
+    {
+        var ids = rows.SelectMany(u => new[] { u.PoleId, u.CelluleId, u.DepartementId }).Distinct().ToArray();
+        var units = await LoadOrgUnitsByIdsAsync(ids, ct);
+        return rows.Select(u => DirectoryUserMapper.ToResponse(
+            u,
+            units.GetValueOrDefault(u.PoleId),
+            units.GetValueOrDefault(u.CelluleId),
+            units.GetValueOrDefault(u.DepartementId))).ToList();
+    }
+
+    private async Task<DirectoryUserResponse> MapDirectoryUserAsync(DirectoryUser row, CancellationToken ct)
+    {
+        var ids = new[] { row.PoleId, row.CelluleId, row.DepartementId };
+        var units = await LoadOrgUnitsByIdsAsync(ids, ct);
+        return DirectoryUserMapper.ToResponse(
+            row,
+            units.GetValueOrDefault(row.PoleId),
+            units.GetValueOrDefault(row.CelluleId),
+            units.GetValueOrDefault(row.DepartementId));
+    }
+
+    private async Task<Dictionary<Guid, OrganisationUnit>> LoadOrgUnitsByIdsAsync(Guid[] ids, CancellationToken ct)
+    {
+        if (ids.Length == 0)
+            return new Dictionary<Guid, OrganisationUnit>();
+        return await db.OrganisationUnits.AsNoTracking()
+            .Where(x => ids.Contains(x.Id))
+            .ToDictionaryAsync(x => x.Id, ct);
     }
 
     public sealed class CreateDocumentRequestBody

@@ -40,6 +40,7 @@ export class RpDashboardComponent implements OnInit, OnDestroy {
   constructor(
     private readonly hierarchy: DocumentationHierarchyDrillService,
     private readonly api: DocumentationApiService,
+    private readonly identity: DocumentationIdentityService,
   ) {}
 
   ngOnInit(): void {

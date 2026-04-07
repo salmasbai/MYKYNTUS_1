@@ -10,25 +10,43 @@
       </div>
     </div>
 
+    @if (docTypesLoading) {
+      <p class="text-sm text-slate-400 mb-4">Chargement des types de documents…</p>
+    }
+    @if (docTypesError) {
+      <p class="text-sm text-amber-400 mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2">
+        {{ docTypesError }}
+      </p>
+    }
+    @if (submitError) {
+      <p class="text-sm text-red-400 mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2">
+        {{ submitError }}
+      </p>
+    }
+    @if (submitSuccess) {
+      <p class="text-sm text-emerald-400 mb-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
+        Demande enregistrée avec succès.
+      </p>
+    }
+
     <form (submit)="handleSubmit($event)" class="space-y-6">
       <div class="space-y-2">
         <label class="text-sm font-medium text-slate-300">Type de document</label>
         <select
           class="w-full bg-navy-800 border border-navy-700 rounded-lg p-3 text-slate-200 outline-none focus:border-blue-500 transition-all"
-          [ngModel]="documentType"
+          [(ngModel)]="documentTypeKey"
           (ngModelChange)="onDocTypeChange($event)"
           name="documentType"
+          [disabled]="docTypesLoading"
         >
-          <option value="Attestation de travail">Attestation de travail</option>
-          <option value="Attestation de salaire">Attestation de salaire</option>
-          <option value="Certificat d’emploi">Certificat d’emploi</option>
-          <option value="Attestation de formation">Attestation de formation</option>
-          <option value="Attestation de stage">Attestation de stage</option>
-          <option [value]="OTHER">{{ OTHER }}</option>
+          @for (t of docTypes; track t.id) {
+            <option [ngValue]="t.id">{{ t.name }}</option>
+          }
+          <option [ngValue]="OTHER_KEY">{{ otherLabel }}</option>
         </select>
       </div>
 
-      @if (documentType === OTHER) {
+      @if (documentTypeKey === OTHER_KEY) {
         <div class="space-y-2">
           <label class="text-sm font-medium text-slate-300">
             Description du type de document <span class="text-red-400">*</span>
@@ -53,6 +71,8 @@
         <label class="text-sm font-medium text-slate-300">Motif de la demande</label>
         <textarea
           rows="4"
+          name="reason"
+          [(ngModel)]="reason"
           placeholder="ex. dossier bancaire, visa, etc."
           class="w-full bg-navy-800 border border-navy-700 rounded-lg p-3 text-slate-200 outline-none focus:border-blue-500 transition-all resize-none"
         ></textarea>
@@ -62,6 +82,8 @@
         <label class="text-sm font-medium text-slate-300">Commentaires complémentaires (facultatif)</label>
         <input
           type="text"
+          name="complementaryComments"
+          [(ngModel)]="complementaryComments"
           class="w-full bg-navy-800 border border-navy-700 rounded-lg p-3 text-slate-200 outline-none focus:border-blue-500 transition-all"
         />
       </div>
@@ -69,11 +91,13 @@
       <div class="pt-4">
         <button
           type="submit"
-          [disabled]="submitted"
-          class="w-full py-3 rounded-lg font-bold text-white transition-all flex items-center justify-center gap-2"
-          [ngClass]="submitted ? 'bg-emerald-600' : 'bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-600/20'"
+          [disabled]="submitting || docTypesLoading"
+          class="w-full py-3 rounded-lg font-bold text-white transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+          [ngClass]="submitSuccess ? 'bg-emerald-600' : 'bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-600/20'"
         >
-          @if (submitted) {
+          @if (submitting) {
+            <span>Envoi en cours…</span>
+          } @else if (submitSuccess) {
             <app-doc-icon name="check-circle-2" klass="w-5 h-5"></app-doc-icon>
             Demande envoyée avec succès
           } @else {

@@ -1,3 +1,4 @@
+using DocumentationBackend.Context;
 using DocumentationBackend.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 
@@ -5,9 +6,41 @@ namespace DocumentationBackend.Data;
 
 public class DocumentationDbContext : DbContext
 {
-    public DocumentationDbContext(DbContextOptions<DocumentationDbContext> options)
+    /// <summary>Noms qualifiés des types ENUM PostgreSQL (évite la lecture en Int32 par défaut EF).</summary>
+    private const string TAppRole = "documentation.app_role";
+    private const string TDocumentRequestStatus = "documentation.document_request_status";
+    private const string TGeneratedDocumentStatus = "documentation.generated_document_status";
+    private const string TWorkflowNotificationKey = "documentation.workflow_notification_key";
+    private const string TWorkflowActionKey = "documentation.workflow_action_key";
+    private const string TStorageType = "documentation.storage_type";
+
+    private readonly IDocumentationTenantAccessor _tenantAccessor;
+
+    /// <summary>
+    /// Utilisé par les query filters — doit être une propriété du DbContext (évaluation par instance).
+    /// Doit rester non vide : les filtres multi-tenant s’appuient sur <see cref="IDocumentationTenantAccessor.ResolvedTenantId"/>.
+    /// </summary>
+    internal string CurrentTenantIdForFilter
+    {
+        get
+        {
+            var id = _tenantAccessor.ResolvedTenantId;
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                throw new InvalidOperationException(
+                    "TenantId non résolu pour les filtres EF : vérifier Documentation:DefaultTenantId et DocumentationTenantAccessor.");
+            }
+
+            return id;
+        }
+    }
+
+    public DocumentationDbContext(
+        DbContextOptions<DocumentationDbContext> options,
+        IDocumentationTenantAccessor tenantAccessor)
         : base(options)
     {
+        _tenantAccessor = tenantAccessor;
     }
 
     public DbSet<DocumentType> DocumentTypes => Set<DocumentType>();
@@ -23,7 +56,26 @@ public class DocumentationDbContext : DbContext
     public DbSet<DmsStorageConfiguration> DmsStorageConfigurations => Set<DmsStorageConfiguration>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<DirectoryUser> DirectoryUsers => Set<DirectoryUser>();
+    public DbSet<OrganisationUnit> OrganisationUnits => Set<OrganisationUnit>();
     public DbSet<DocumentRequestSequence> DocumentRequestSequences => Set<DocumentRequestSequence>();
+
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        var tenantId = _tenantAccessor.ResolvedTenantId;
+        foreach (var entry in ChangeTracker.Entries<DocumentRequest>())
+        {
+            if (entry.State == EntityState.Added && string.IsNullOrEmpty(entry.Entity.TenantId))
+                entry.Entity.TenantId = tenantId;
+        }
+
+        foreach (var entry in ChangeTracker.Entries<AuditLog>())
+        {
+            if (entry.State == EntityState.Added && string.IsNullOrEmpty(entry.Entity.TenantId))
+                entry.Entity.TenantId = tenantId;
+        }
+
+        return await base.SaveChangesAsync(cancellationToken);
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -35,6 +87,11 @@ public class DocumentationDbContext : DbContext
         modelBuilder.HasPostgresEnum<WorkflowActionKey>(schema: "documentation");
         modelBuilder.HasPostgresEnum<AppRole>(schema: "documentation");
         modelBuilder.HasPostgresEnum<StorageType>(schema: "documentation");
+
+        modelBuilder.Entity<DocumentRequest>().HasQueryFilter(dr => dr.TenantId == CurrentTenantIdForFilter);
+        modelBuilder.Entity<AuditLog>().HasQueryFilter(a => a.TenantId == CurrentTenantIdForFilter);
+        modelBuilder.Entity<DirectoryUser>().HasQueryFilter(u => u.TenantId == CurrentTenantIdForFilter);
+        modelBuilder.Entity<OrganisationUnit>().HasQueryFilter(ou => ou.TenantId == CurrentTenantIdForFilter);
 
         modelBuilder.Entity<Workflow>(e =>
         {
@@ -58,6 +115,8 @@ public class DocumentationDbContext : DbContext
         modelBuilder.Entity<WorkflowStep>(e =>
         {
             e.ToTable("workflow_steps");
+            e.Property(x => x.AssignedRole).HasColumnType(TAppRole);
+            e.Property(x => x.NotificationKey).HasColumnType(TWorkflowNotificationKey);
             e.Property(x => x.StepKey).HasMaxLength(64);
             e.Property(x => x.Name).HasMaxLength(255);
             e.HasOne(x => x.Workflow)
@@ -70,6 +129,7 @@ public class DocumentationDbContext : DbContext
         modelBuilder.Entity<WorkflowStepAction>(e =>
         {
             e.ToTable("workflow_step_actions");
+            e.Property(x => x.Action).HasColumnType(TWorkflowActionKey);
             e.HasKey(x => new { x.WorkflowStepId, x.Action });
             e.HasOne(x => x.Step)
                 .WithMany(s => s.Actions)
@@ -80,8 +140,13 @@ public class DocumentationDbContext : DbContext
         modelBuilder.Entity<DocumentRequest>(e =>
         {
             e.ToTable("document_requests");
-            e.HasIndex(x => x.RequestNumber).IsUnique();
+            e.Property(x => x.Status).HasColumnType(TDocumentRequestStatus);
+            e.Property(x => x.TenantId).HasMaxLength(64).IsRequired();
+            e.HasIndex(x => x.TenantId);
             e.Property(x => x.RequestNumber).HasMaxLength(32);
+            e.HasIndex(x => new { x.TenantId, x.RequestNumber })
+                .IsUnique()
+                .HasFilter("request_number IS NOT NULL");
             e.HasOne(x => x.DocumentType)
                 .WithMany(t => t.DocumentRequests)
                 .HasForeignKey(x => x.DocumentTypeId)
@@ -91,6 +156,7 @@ public class DocumentationDbContext : DbContext
         modelBuilder.Entity<GeneratedDocument>(e =>
         {
             e.ToTable("generated_documents");
+            e.Property(x => x.Status).HasColumnType(TGeneratedDocumentStatus);
             e.Property(x => x.FileName).HasMaxLength(512);
             e.Property(x => x.MimeType).HasMaxLength(128);
             e.Property(x => x.ChecksumSha256).HasMaxLength(64);
@@ -126,6 +192,7 @@ public class DocumentationDbContext : DbContext
         modelBuilder.Entity<PermissionPolicy>(e =>
         {
             e.ToTable("permission_policies");
+            e.Property(x => x.Role).HasColumnType(TAppRole);
             e.Property(x => x.DepartmentCode).HasMaxLength(128);
             e.HasOne(x => x.DocumentType)
                 .WithMany(t => t.PermissionPolicies)
@@ -145,6 +212,7 @@ public class DocumentationDbContext : DbContext
         modelBuilder.Entity<DmsStorageConfiguration>(e =>
         {
             e.ToTable("dms_storage_configuration");
+            e.Property(x => x.StorageType).HasColumnType(TStorageType);
             e.Property(x => x.BucketName).HasMaxLength(255);
             e.Property(x => x.Region).HasMaxLength(64);
             e.Property(x => x.AccessKeyReference).HasMaxLength(512);
@@ -153,25 +221,75 @@ public class DocumentationDbContext : DbContext
         modelBuilder.Entity<AuditLog>(e =>
         {
             e.ToTable("audit_logs");
+            e.Property(x => x.TenantId).HasMaxLength(64).IsRequired();
+            e.HasIndex(x => x.TenantId);
             e.Property(x => x.Action).HasMaxLength(64);
             e.Property(x => x.EntityType).HasMaxLength(64);
             e.Property(x => x.Details).HasColumnType("jsonb");
+            e.Property(x => x.RequestNumber).HasMaxLength(32);
+        });
+
+        modelBuilder.Entity<OrganisationUnit>(e =>
+        {
+            e.ToTable("organisation_units");
+            e.Property(x => x.TenantId).HasMaxLength(64).IsRequired();
+            e.Property(x => x.UnitType).HasMaxLength(32);
+            e.Property(x => x.Code).HasMaxLength(64);
+            e.Property(x => x.Name).HasMaxLength(255);
+            e.HasIndex(x => x.TenantId);
+            e.HasIndex(x => new { x.TenantId, x.Code }).IsUnique();
+            e.HasOne<OrganisationUnit>()
+                .WithMany()
+                .HasForeignKey(x => x.ParentId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<DirectoryUser>(e =>
         {
             e.ToTable("directory_users");
+            e.Property(x => x.Role).HasColumnType(TAppRole);
             e.Property(x => x.TenantId).HasMaxLength(64);
             e.Property(x => x.Prenom).HasMaxLength(128);
             e.Property(x => x.Nom).HasMaxLength(128);
             e.Property(x => x.Email).HasMaxLength(255);
             e.HasIndex(x => x.TenantId);
+            e.HasIndex(x => x.ManagerId);
+            e.HasIndex(x => x.CoachId);
+            e.HasIndex(x => x.RpId);
+            e.HasIndex(x => x.PoleId);
+            e.HasIndex(x => x.CelluleId);
+            e.HasIndex(x => x.DepartementId);
+            e.HasOne<DirectoryUser>()
+                .WithMany()
+                .HasForeignKey(x => x.ManagerId)
+                .OnDelete(DeleteBehavior.SetNull);
+            e.HasOne<DirectoryUser>()
+                .WithMany()
+                .HasForeignKey(x => x.CoachId)
+                .OnDelete(DeleteBehavior.SetNull);
+            e.HasOne<DirectoryUser>()
+                .WithMany()
+                .HasForeignKey(x => x.RpId)
+                .OnDelete(DeleteBehavior.SetNull);
+            e.HasOne<OrganisationUnit>()
+                .WithMany()
+                .HasForeignKey(x => x.PoleId)
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<OrganisationUnit>()
+                .WithMany()
+                .HasForeignKey(x => x.CelluleId)
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<OrganisationUnit>()
+                .WithMany()
+                .HasForeignKey(x => x.DepartementId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<DocumentRequestSequence>(e =>
         {
             e.ToTable("document_request_sequences");
-            e.HasKey(x => x.Year);
+            e.HasKey(x => new { x.TenantId, x.Year });
+            e.Property(x => x.TenantId).HasMaxLength(64);
         });
     }
 }

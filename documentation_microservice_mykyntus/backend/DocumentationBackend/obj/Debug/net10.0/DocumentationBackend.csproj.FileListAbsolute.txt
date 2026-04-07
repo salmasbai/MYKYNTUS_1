@@ -34,3 +34,4 @@ C:\Users\saLMa.essbai\Downloads\MyKyntus_version_actuel\MyKyntus_V14\documentati
 C:\Users\saLMa.essbai\Downloads\MyKyntus_version_actuel\MyKyntus_V14\documentation_microservice_mykyntus\backend\DocumentationBackend\obj\Debug\net10.0\DocumentationBackend.pdb
 C:\Users\saLMa.essbai\Downloads\MyKyntus_version_actuel\MyKyntus_V14\documentation_microservice_mykyntus\backend\DocumentationBackend\obj\Debug\net10.0\DocumentationBackend.genruntimeconfig.cache
 C:\Users\saLMa.essbai\Downloads\MyKyntus_version_actuel\MyKyntus_V14\documentation_microservice_mykyntus\backend\DocumentationBackend\obj\Debug\net10.0\ref\DocumentationBackend.dll
+C:\Users\saLMa.essbai\Downloads\MyKyntus_version_actuel\MyKyntus_V14\documentation_microservice_mykyntus\backend\DocumentationBackend\obj\Debug\net10.0\DocumentationBackend.sourcelink.json

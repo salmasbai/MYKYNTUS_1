@@ -47,6 +47,15 @@ export interface AuditLogDto {
   correlationId?: string | null;
 }
 
+/** Unité organisationnelle (pôle / cellule / département). */
+export interface OrganizationalUnitSummaryDto {
+  id: string;
+  code: string;
+  name: string;
+  /** pole | cellule | departement */
+  unitType: string;
+}
+
 /** Annuaire — table documentation.directory_users (API réelle). */
 export interface DirectoryUserDto {
   id: string;
@@ -55,6 +64,19 @@ export interface DirectoryUserDto {
   email: string;
   /** Valeur API : pilote, coach, manager, rp, rh, admin, audit */
   role: string;
+  /** Hiérarchie métier : coach → manager d’agence. */
+  managerId?: string | null;
+  /** Hiérarchie métier : pilote → coach référent. */
+  coachId?: string | null;
+  /** Hiérarchie métier : manager → RP de tutelle. */
+  rpId?: string | null;
+  /** Rattachement organisationnel explicite (obligatoire en base). */
+  poleId: string;
+  celluleId: string;
+  departementId: string;
+  pole?: OrganizationalUnitSummaryDto | null;
+  cellule?: OrganizationalUnitSummaryDto | null;
+  departement?: OrganizationalUnitSummaryDto | null;
 }
 
 export interface DbStatusDto {

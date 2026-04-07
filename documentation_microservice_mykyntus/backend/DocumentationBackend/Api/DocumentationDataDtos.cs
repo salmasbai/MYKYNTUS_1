@@ -38,5 +38,22 @@ public sealed record AuditLogResponse(
     string? ErrorMessage,
     string? CorrelationId);
 
+/// <summary>Résumé unité organisationnelle (pôle / cellule / département).</summary>
+public sealed record OrganizationalUnitSummary(string Id, string Code, string Name, string UnitType);
+
 /// <summary>Profil annuaire (schéma documentation.directory_users).</summary>
-public sealed record DirectoryUserResponse(string Id, string Prenom, string Nom, string Email, string Role);
+public sealed record DirectoryUserResponse(
+    string Id,
+    string Prenom,
+    string Nom,
+    string Email,
+    string Role,
+    string? ManagerId,
+    string? CoachId,
+    string? RpId,
+    string PoleId,
+    string CelluleId,
+    string DepartementId,
+    OrganizationalUnitSummary? Pole,
+    OrganizationalUnitSummary? Cellule,
+    OrganizationalUnitSummary? Departement);

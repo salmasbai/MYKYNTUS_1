@@ -6,7 +6,8 @@
     "ng": "ng",
     "start": "ng serve documentation-ui --port 4200",
     "build": "ng build documentation-ui",
-    "watch": "ng build --watch --configuration development"
+    "watch": "ng build --watch --configuration development",
+    "test": "ng test documentation-ui --no-watch --browsers=ChromeHeadless"
   },
   "dependencies": {
     "@angular/animations": "^18.2.13",
@@ -26,6 +27,12 @@
     "@angular/cli": "^18.2.13",
     "@angular/compiler-cli": "^18.2.13",
     "@tailwindcss/postcss": "^4.2.2",
+    "@types/jasmine": "~5.1.4",
+    "jasmine-core": "~5.4.0",
+    "karma": "~6.4.4",
+    "karma-chrome-launcher": "~3.2.0",
+    "karma-jasmine": "~5.1.0",
+    "karma-jasmine-html-reporter": "~2.1.0",
     "postcss": "^8.5.8",
     "tailwindcss": "^4.2.2",
     "typescript": "~5.5.4"

@@ -15,6 +15,12 @@ public sealed class DocumentationUserContext
     /// <summary>Identifiant tenant (traçabilité / gateway) — non requis pour les requêtes métier si la base est au schéma 001.</summary>
     public string? TenantId { get; private set; }
 
+    /// <summary>Périmètre manager (RP / navigation hiérarchique) — optionnel.</summary>
+    public Guid? ScopeManagerId { get; private set; }
+
+    /// <summary>Périmètre coach — filtre les demandes des pilotes rattachés à ce coach (manager / RP).</summary>
+    public Guid? ScopeCoachId { get; private set; }
+
     public bool IsComplete => UserId.HasValue && Role.HasValue;
 
     public string? ValidationError { get; private set; }
@@ -24,7 +30,12 @@ public sealed class DocumentationUserContext
         UserId = null;
         Role = null;
         TenantId = null;
+        ScopeManagerId = null;
+        ScopeCoachId = null;
         ValidationError = null;
+
+        ScopeManagerId = TryParseOptionalGuidHeader(headers, DocumentationInboundHeaders.ScopeManagerId);
+        ScopeCoachId = TryParseOptionalGuidHeader(headers, DocumentationInboundHeaders.ScopeCoachId);
 
         var idRaw = FirstHeader(headers, DocumentationInboundHeaders.UserId, DocumentationInboundHeaders.LegacyUserId);
         if (!string.IsNullOrWhiteSpace(idRaw))
@@ -72,6 +83,14 @@ public sealed class DocumentationUserContext
 
             TenantId = normalized;
         }
+    }
+
+    private static Guid? TryParseOptionalGuidHeader(IHeaderDictionary headers, string headerName)
+    {
+        var raw = FirstHeader(headers, headerName);
+        if (string.IsNullOrWhiteSpace(raw))
+            return null;
+        return Guid.TryParse(raw.Trim(), out var g) && g != Guid.Empty ? g : null;
     }
 
     private static string? FirstHeader(IHeaderDictionary headers, params string[] names)
