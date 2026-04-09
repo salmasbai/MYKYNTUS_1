@@ -4,6 +4,7 @@ using DocumentationBackend.Context;
 using DocumentationBackend.Data;
 using DocumentationBackend.Data.Entities;
 using DocumentationBackend.Services;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -19,9 +20,15 @@ namespace DocumentationBackend.Controllers;
 public class DocumentationDataController(
     DocumentationDbContext db,
     DocumentationUserContext userContext,
-    IDocumentationTenantAccessor tenantAccessor) : ControllerBase
+    IDocumentationTenantAccessor tenantAccessor,
+    DocumentationWorkflowService workflow,
+    ITemplateEngineService templateEngine,
+    IPdfExportService pdfExport,
+    ILogger<DocumentationDataController> logger) : ControllerBase
 {
     private const string PostgresUniqueViolationSqlState = "23505";
+    private const int MaxTemplateContentLength = 100_000;
+    private const int MaxTemplateVariables = 100;
 
     /// <summary>Libellé normalisé pour filtrer <c>unit_type</c> (comparaison en minuscules côté requête).</summary>
     private const string OrgUnitTypePole = "pole";
@@ -64,6 +71,15 @@ public class DocumentationDataController(
         [FromQuery] string? sortOrder = null,
         CancellationToken ct = default)
     {
+        var tenant = tenantAccessor.ResolvedTenantId;
+        logger.LogInformation(
+            "GetDocumentRequests start tenant={TenantId} actorRole={Role} actorUserId={UserId} statusFilter={Status} roleFilter={RoleFilter}",
+            tenant,
+            userContext.Role?.ToString() ?? "unknown",
+            userContext.UserId?.ToString() ?? "unknown",
+            status ?? "(none)",
+            role ?? "(none)");
+
         page = Math.Max(1, page);
         pageSize = Math.Clamp(pageSize, 1, 100);
 
@@ -130,6 +146,27 @@ public class DocumentationDataController(
                 : baseQuery.Where(static r => false);
         }
 
+        // Visibilité par rôle (toujours dans le tenant courant — filtre EF global).
+        // RH / Admin / Audit : toutes les demandes du locataire (aucun filtre supplémentaire ici).
+        if (userContext.Role == AppRole.Pilote && userContext.UserId.HasValue)
+        {
+            var uid = userContext.UserId.Value;
+            baseQuery = baseQuery.Where(r => r.RequesterUserId == uid || r.BeneficiaryUserId == uid);
+        }
+        else if (userContext.Role == AppRole.Coach && userContext.UserId.HasValue)
+        {
+            var coachId = userContext.UserId.Value;
+            var pilotIds = await db.DirectoryUsers.AsNoTracking()
+                .Where(u => u.Role == AppRole.Pilote && u.CoachId == coachId)
+                .Select(u => u.Id)
+                .ToListAsync(ct);
+            baseQuery = pilotIds.Count > 0
+                ? baseQuery.Where(r =>
+                    pilotIds.Contains(r.RequesterUserId) ||
+                    (r.BeneficiaryUserId.HasValue && pilotIds.Contains(r.BeneficiaryUserId.Value)))
+                : baseQuery.Where(static r => false);
+        }
+
         // Périmètre hiérarchique (manager / RP) : demandes des pilotes encadrés par le coach choisi.
         if (userContext.ScopeCoachId.HasValue &&
             userContext.Role is AppRole.Manager or AppRole.Rp)
@@ -183,6 +220,13 @@ public class DocumentationDataController(
                 typeRow = dt;
             return DocumentRequestMapper.ToResponse(r, typeRow, userContext, displayNames);
         }).ToList();
+        logger.LogInformation(
+            "GetDocumentRequests result tenant={TenantId} returned={ReturnedCount} total={TotalCount} page={Page} pageSize={PageSize}",
+            tenant,
+            items.Count,
+            total,
+            page,
+            pageSize);
         return new PagedResponse<DocumentRequestResponse>(items, total, page, pageSize);
     }
 
@@ -193,6 +237,9 @@ public class DocumentationDataController(
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id, ct);
         if (r is null)
+            return NotFound();
+
+        if (!await CanActorViewDocumentRequestAsync(r, ct))
             return NotFound();
 
         DocumentType? typeRow = null;
@@ -212,6 +259,7 @@ public class DocumentationDataController(
         CancellationToken ct)
     {
         var requesterId = userContext.UserId!.Value;
+        var tenant = tenantAccessor.ResolvedTenantId;
 
         if (body.RequesterUserId.HasValue && body.RequesterUserId.Value != Guid.Empty &&
             body.RequesterUserId.Value != requesterId)
@@ -235,57 +283,72 @@ public class DocumentationDataController(
             documentTypeId = dt;
         }
 
-        await using var tx = await db.Database.BeginTransactionAsync(ct);
-        string requestNumber;
-        try
-        {
-            requestNumber = await DocumentRequestNumberingService.AllocateNextAsync(db, tenantAccessor.ResolvedTenantId, ct);
-        }
-        catch (Exception ex)
-        {
-            await tx.RollbackAsync(ct);
-            return Problem(detail: ex.Message, title: "Numérotation indisponible");
-        }
-
         var requesterRow = await db.DirectoryUsers.AsNoTracking()
             .FirstOrDefaultAsync(u => u.Id == requesterId, ct);
+        DocumentRequest? entity = null;
+        PostgresException? lastUniqueViolation = null;
+        const int maxAttempts = 3;
 
-        var now = DateTimeOffset.UtcNow;
-        var entity = new DocumentRequest
+        for (var attempt = 1; attempt <= maxAttempts; attempt++)
         {
-            Id = Guid.NewGuid(),
-            TenantId = tenantAccessor.ResolvedTenantId,
-            RequestNumber = requestNumber,
-            RequesterUserId = requesterId,
-            BeneficiaryUserId = body.BeneficiaryUserId,
-            DocumentTypeId = body.IsCustomType ? null : documentTypeId,
-            IsCustomType = body.IsCustomType,
-            CustomTypeDescription = body.IsCustomType ? body.CustomTypeDescription!.Trim() : null,
-            Reason = string.IsNullOrWhiteSpace(body.Reason) ? null : body.Reason.Trim(),
-            ComplementaryComments = string.IsNullOrWhiteSpace(body.ComplementaryComments) ? null : body.ComplementaryComments.Trim(),
-            Status = DocumentRequestStatus.Pending,
-            CreatedAt = now,
-            UpdatedAt = now,
-            OrganizationalUnitId = requesterRow?.DepartementId,
-        };
+            await using var tx = await db.Database.BeginTransactionAsync(ct);
+            try
+            {
+                var requestNumber = await DocumentRequestNumberingService.AllocateNextAsync(db, tenantAccessor.ResolvedTenantId, ct);
+                var now = DateTimeOffset.UtcNow;
+                entity = new DocumentRequest
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = tenantAccessor.ResolvedTenantId,
+                    RequestNumber = requestNumber,
+                    RequesterUserId = requesterId,
+                    BeneficiaryUserId = body.BeneficiaryUserId,
+                    DocumentTypeId = body.IsCustomType ? null : documentTypeId,
+                    IsCustomType = body.IsCustomType,
+                    CustomTypeDescription = body.IsCustomType ? body.CustomTypeDescription!.Trim() : null,
+                    Reason = string.IsNullOrWhiteSpace(body.Reason) ? null : body.Reason.Trim(),
+                    ComplementaryComments = string.IsNullOrWhiteSpace(body.ComplementaryComments) ? null : body.ComplementaryComments.Trim(),
+                    Status = DocumentRequestStatus.Pending,
+                    CreatedAt = now,
+                    UpdatedAt = now,
+                    OrganizationalUnitId = requesterRow?.DepartementId,
+                };
 
-        db.DocumentRequests.Add(entity);
+                db.DocumentRequests.Add(entity);
+                await db.SaveChangesAsync(ct);
+                await tx.CommitAsync(ct);
+                break;
+            }
+            catch (DbUpdateException ex) when (ex.InnerException is PostgresException pg && pg.SqlState == PostgresUniqueViolationSqlState)
+            {
+                lastUniqueViolation = pg;
+                await tx.RollbackAsync(ct);
+                if (entity is not null)
+                    db.Entry(entity).State = EntityState.Detached;
+            }
+            catch (Exception ex)
+            {
+                await tx.RollbackAsync(ct);
+                return Problem(detail: ex.Message, title: "Numérotation indisponible");
+            }
+        }
 
-        try
+        if (entity is null)
         {
-            await db.SaveChangesAsync(ct);
-            await tx.CommitAsync(ct);
+            return Conflict(new
+            {
+                message = "Conflit d'unicité persistant. Réessayez dans quelques secondes.",
+                constraint = lastUniqueViolation?.ConstraintName,
+            });
         }
-        catch (DbUpdateException ex) when (ex.InnerException is PostgresException pg && pg.SqlState == PostgresUniqueViolationSqlState)
-        {
-            await tx.RollbackAsync(ct);
-            return Conflict(new { message = "Conflit d'unicité (numéro ou identifiant). Réessayez." });
-        }
-        catch (DbUpdateException ex)
-        {
-            await tx.RollbackAsync(ct);
-            return BadRequest(new { message = "Enregistrement refusé par la base.", detail = ex.InnerException?.Message ?? ex.Message });
-        }
+
+        logger.LogInformation(
+            "CreateDocumentRequest success tenant={TenantId} actorUserId={ActorUserId} requestId={RequestId} requestNumber={RequestNumber} status={Status}",
+            tenant,
+            requesterId,
+            entity.Id,
+            entity.RequestNumber ?? "(none)",
+            entity.Status.ToString());
 
         DocumentType? typeRow = null;
         if (!entity.IsCustomType && entity.DocumentTypeId.HasValue)
@@ -297,6 +360,50 @@ public class DocumentationDataController(
             ct);
         return Ok(DocumentRequestMapper.ToResponse(entity, typeRow, userContext, displayNames));
     }
+
+    /// <summary>Alias REST (PUT) — même logique que <c>POST /workflow/validate</c>.</summary>
+    [HttpPut("document-requests/{id:guid}/validate")]
+    public async Task<ActionResult<DocumentRequestResponse>> PutValidateDocumentRequest(
+        Guid id,
+        [FromBody] WorkflowValidatePutBody? body,
+        CancellationToken ct)
+    {
+        logger.LogInformation("PutValidateDocumentRequest requestId={RequestId} tenant={TenantId}", id, tenantAccessor.ResolvedTenantId);
+        var (res, code, err) = await workflow.ValidateAsync(id, body?.Comment, ct);
+        return MapWorkflowResult(code, res, err);
+    }
+
+    /// <summary>Alias REST (PUT) — même logique que <c>POST /workflow/approve</c>.</summary>
+    [HttpPut("document-requests/{id:guid}/approve")]
+    public async Task<ActionResult<DocumentRequestResponse>> PutApproveDocumentRequest(Guid id, CancellationToken ct)
+    {
+        logger.LogInformation("PutApproveDocumentRequest requestId={RequestId} tenant={TenantId}", id, tenantAccessor.ResolvedTenantId);
+        var (res, code, err) = await workflow.ApproveAsync(id, ct);
+        return MapWorkflowResult(code, res, err);
+    }
+
+    /// <summary>Alias REST (PUT) — même logique que <c>POST /workflow/reject</c>.</summary>
+    [HttpPut("document-requests/{id:guid}/reject")]
+    public async Task<ActionResult<DocumentRequestResponse>> PutRejectDocumentRequest(
+        Guid id,
+        [FromBody] WorkflowRejectPutBody body,
+        CancellationToken ct)
+    {
+        logger.LogInformation("PutRejectDocumentRequest requestId={RequestId} tenant={TenantId}", id, tenantAccessor.ResolvedTenantId);
+        var (res, code, err) = await workflow.RejectAsync(id, body.RejectionReason ?? "", ct);
+        return MapWorkflowResult(code, res, err);
+    }
+
+    private ActionResult<DocumentRequestResponse> MapWorkflowResult(int code, DocumentRequestResponse? res, string? err) =>
+        code switch
+        {
+            StatusCodes.Status200OK => Ok(res!),
+            StatusCodes.Status404NotFound => NotFound(new { message = err ?? "Demande introuvable." }),
+            StatusCodes.Status403Forbidden => StatusCode(StatusCodes.Status403Forbidden, new { message = err }),
+            StatusCodes.Status400BadRequest => BadRequest(new { message = err }),
+            StatusCodes.Status409Conflict => Conflict(new { message = err }),
+            _ => StatusCode(code, new { message = err }),
+        };
 
     [HttpGet("audit-logs")]
     public async Task<ActionResult<PagedResponse<AuditLogResponse>>> GetAuditLogs(
@@ -375,18 +482,315 @@ public class DocumentationDataController(
     {
         var rows = await db.DocumentTemplates.AsNoTracking()
             .Include(t => t.DocumentType)
-            .Include(t => t.Variables)
             .OrderBy(t => t.Code)
             .ToListAsync(ct);
+        var versionIds = rows.Where(t => t.CurrentVersionId.HasValue).Select(t => t.CurrentVersionId!.Value).Distinct().ToArray();
+        var versionNumbers = versionIds.Length == 0
+            ? new Dictionary<Guid, int>()
+            : await db.DocumentTemplateVersions.AsNoTracking()
+                .Where(v => versionIds.Contains(v.Id))
+                .ToDictionaryAsync(v => v.Id, v => v.VersionNumber, ct);
+        var templateIds = rows.Select(t => t.Id).ToArray();
+        Dictionary<Guid, List<string>> variableNamesByTemplate = new();
+        if (templateIds.Length > 0)
+        {
+            var varRows = await db.DocumentTemplateVariables.AsNoTracking()
+                .Where(v => templateIds.Contains(v.TemplateId))
+                .OrderBy(v => v.TemplateId)
+                .ThenBy(v => v.SortOrder)
+                .Select(v => new { v.TemplateId, v.VariableName })
+                .ToListAsync(ct);
+            foreach (var g in varRows.GroupBy(x => x.TemplateId))
+                variableNamesByTemplate[g.Key] = g.Select(x => x.VariableName).ToList();
+        }
         var list = rows.Select(t => new DocumentTemplateListItemResponse(
             t.Id.ToString(),
             t.Code,
             t.Name,
+            t.Source,
+            t.IsActive,
             t.DocumentTypeId?.ToString(),
             t.DocumentType?.Name,
-            t.Variables.OrderBy(v => v.SortOrder).Select(v => v.VariableName).ToList(),
+            variableNamesByTemplate.GetValueOrDefault(t.Id, new List<string>()),
+            t.CurrentVersionId?.ToString(),
+            t.CurrentVersionId.HasValue && versionNumbers.TryGetValue(t.CurrentVersionId.Value, out var vn) ? vn : null,
             t.UpdatedAt.ToString("O"))).ToList();
         return Ok(list);
+    }
+
+    [HttpGet("document-templates/{id:guid}")]
+    public async Task<ActionResult<DocumentTemplateDetailResponse>> GetDocumentTemplate(Guid id, CancellationToken ct)
+    {
+        var template = await db.DocumentTemplates
+            .AsNoTracking()
+            .Include(t => t.DocumentType)
+            .Include(t => t.CurrentVersion)
+            .FirstOrDefaultAsync(t => t.Id == id, ct);
+        if (template is null)
+            return NotFound();
+
+        DocumentTemplateVersionResponse? versionDto = null;
+        if (template.CurrentVersionId.HasValue)
+        {
+            var vars = await db.DocumentTemplateVariables.AsNoTracking()
+                .Where(v => v.TemplateVersionId == template.CurrentVersionId.Value)
+                .OrderBy(v => v.SortOrder)
+                .Select(v => new DocumentTemplateVariableResponse(
+                    v.Id.ToString(), v.VariableName, v.VariableType, v.IsRequired, v.DefaultValue, v.ValidationRule, v.SortOrder))
+                .ToListAsync(ct);
+            var cv = template.CurrentVersion;
+            if (cv is not null)
+            {
+                versionDto = new DocumentTemplateVersionResponse(
+                    cv.Id.ToString(),
+                    cv.VersionNumber,
+                    cv.Status,
+                    cv.StructuredContent,
+                    cv.OriginalAssetUri,
+                    cv.CreatedAt.ToString("O"),
+                    cv.PublishedAt?.ToString("O"),
+                    vars);
+            }
+        }
+
+        return Ok(new DocumentTemplateDetailResponse(
+            template.Id.ToString(),
+            template.Code,
+            template.Name,
+            template.Source,
+            template.IsActive,
+            template.DocumentTypeId?.ToString(),
+            template.DocumentType?.Name,
+            template.UpdatedAt.ToString("O"),
+            versionDto));
+    }
+
+    [HttpPost("document-templates")]
+    public async Task<ActionResult<DocumentTemplateDetailResponse>> CreateDocumentTemplate(
+        [FromBody] CreateDocumentTemplateRequest body,
+        CancellationToken ct)
+    {
+        if (!userContext.UserId.HasValue)
+            return Unauthorized();
+        if (string.IsNullOrWhiteSpace(body.Code) || string.IsNullOrWhiteSpace(body.Name))
+            return BadRequest(new { message = "Code et nom du template sont obligatoires." });
+        if (!IsValidTemplateCode(body.Code))
+            return BadRequest(new { message = "Le code template doit contenir uniquement lettres/chiffres/souligné/tiret." });
+        if (body.StructuredContent.Length > MaxTemplateContentLength)
+            return BadRequest(new { message = "Contenu template trop volumineux." });
+
+        var now = DateTimeOffset.UtcNow;
+        var template = new DocumentTemplate
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantAccessor.ResolvedTenantId,
+            Code = body.Code.Trim().ToUpperInvariant(),
+            Name = body.Name.Trim(),
+            Source = NormalizeSource(body.Source),
+            IsActive = true,
+            DocumentTypeId = body.DocumentTypeId,
+            UpdatedAt = now,
+        };
+        db.DocumentTemplates.Add(template);
+        await db.SaveChangesAsync(ct);
+
+        var version = await CreateTemplateVersionInternalAsync(
+            template,
+            body.StructuredContent,
+            "published",
+            body.OriginalAssetUri,
+            body.Variables,
+            userContext.UserId,
+            ct);
+
+        template.CurrentVersionId = version.Id;
+        await db.SaveChangesAsync(ct);
+        return await GetDocumentTemplate(template.Id, ct);
+    }
+
+    [HttpPut("document-templates/{id:guid}")]
+    public async Task<ActionResult<DocumentTemplateDetailResponse>> UpdateDocumentTemplate(
+        Guid id,
+        [FromBody] UpdateDocumentTemplateRequest body,
+        CancellationToken ct)
+    {
+        var template = await db.DocumentTemplates.FirstOrDefaultAsync(t => t.Id == id, ct);
+        if (template is null)
+            return NotFound();
+
+        if (!string.IsNullOrWhiteSpace(body.Name))
+            template.Name = body.Name.Trim();
+        template.DocumentTypeId = body.DocumentTypeId;
+        template.UpdatedAt = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync(ct);
+
+        return await GetDocumentTemplate(id, ct);
+    }
+
+    [HttpPatch("document-templates/{id:guid}/status")]
+    public async Task<ActionResult<DocumentTemplateDetailResponse>> UpdateDocumentTemplateStatus(
+        Guid id,
+        [FromBody] UpdateTemplateStatusRequest body,
+        CancellationToken ct)
+    {
+        var template = await db.DocumentTemplates.FirstOrDefaultAsync(t => t.Id == id, ct);
+        if (template is null)
+            return NotFound();
+
+        template.IsActive = body.IsActive;
+        template.UpdatedAt = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync(ct);
+        return await GetDocumentTemplate(id, ct);
+    }
+
+    [HttpPost("document-templates/upload")]
+    public async Task<ActionResult<DocumentTemplateDetailResponse>> UploadTemplate(
+        [FromBody] UploadTemplateRequest body,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(body.Content))
+            return BadRequest(new { message = "Le contenu du fichier est requis pour analyse." });
+        if (body.Content.Length > MaxTemplateContentLength)
+            return BadRequest(new { message = "Fichier trop volumineux pour l'analyse V1." });
+
+        var detected = templateEngine.DetectVariables(body.Content);
+        var vars = detected.Select(v => new TemplateVariableInput
+        {
+            Name = v.Name,
+            Type = v.Type,
+            IsRequired = v.IsRequired,
+            ValidationRule = v.ValidationRule,
+        }).ToList();
+
+        var req = new CreateDocumentTemplateRequest
+        {
+            Code = body.Code,
+            Name = body.Name,
+            DocumentTypeId = body.DocumentTypeId,
+            Source = "UPLOAD",
+            StructuredContent = body.Content,
+            OriginalAssetUri = body.FileName,
+            Variables = vars,
+        };
+
+        return await CreateDocumentTemplate(req, ct);
+    }
+
+    [HttpPost("document-templates/rule-generate")]
+    public async Task<ActionResult<DocumentTemplateDetailResponse>> GenerateRuleBasedTemplate(
+        [FromBody] RuleGenerateTemplateRequest body,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(body.Description))
+            return BadRequest(new { message = "La description RH est obligatoire." });
+        if (body.Description.Length > 2000)
+            return BadRequest(new { message = "Description trop longue." });
+        var names = body.SuggestedVariables.Count == 0
+            ? new[] { "nom", "prenom", "cin", "poste", "salaire", "date_embauche", "departement", "date" }
+            : body.SuggestedVariables;
+        var content = templateEngine.BuildRuleBasedContent(body.Description.Trim(), names);
+        var vars = templateEngine.DetectVariables(content).Select(v => new TemplateVariableInput
+        {
+            Name = v.Name,
+            Type = v.Type,
+            IsRequired = v.IsRequired,
+            ValidationRule = v.ValidationRule,
+        }).ToList();
+
+        var req = new CreateDocumentTemplateRequest
+        {
+            Code = body.Code,
+            Name = body.Name,
+            DocumentTypeId = body.DocumentTypeId,
+            Source = "RULE_BASED",
+            StructuredContent = content,
+            Variables = vars,
+        };
+
+        return await CreateDocumentTemplate(req, ct);
+    }
+
+    [HttpPost("document-templates/{id:guid}/versions")]
+    public async Task<ActionResult<DocumentTemplateVersionResponse>> CreateTemplateVersion(
+        Guid id,
+        [FromBody] CreateTemplateVersionRequest body,
+        CancellationToken ct)
+    {
+        var template = await db.DocumentTemplates.FirstOrDefaultAsync(t => t.Id == id, ct);
+        if (template is null)
+            return NotFound();
+        if (string.IsNullOrWhiteSpace(body.StructuredContent))
+            return BadRequest(new { message = "structuredContent est obligatoire." });
+        if (body.StructuredContent.Length > MaxTemplateContentLength)
+            return BadRequest(new { message = "structuredContent trop volumineux." });
+
+        var status = NormalizeVersionStatus(body.Status);
+        var vars = body.Variables.Count == 0
+            ? templateEngine.DetectVariables(body.StructuredContent).Select(v => new TemplateVariableInput
+            {
+                Name = v.Name, Type = v.Type, IsRequired = v.IsRequired, ValidationRule = v.ValidationRule,
+            }).ToList()
+            : body.Variables;
+
+        var version = await CreateTemplateVersionInternalAsync(
+            template,
+            body.StructuredContent,
+            status,
+            body.OriginalAssetUri,
+            vars,
+            userContext.UserId,
+            ct);
+
+        if (status == "published")
+            template.CurrentVersionId = version.Id;
+        template.UpdatedAt = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync(ct);
+
+        return Ok(MapVersionResponse(version, vars.Select((v, i) => ToVariableResponse(v, i)).ToList()));
+    }
+
+    [HttpGet("document-templates/{id:guid}/versions")]
+    public async Task<ActionResult<IReadOnlyList<DocumentTemplateVersionResponse>>> GetTemplateVersions(Guid id, CancellationToken ct)
+    {
+        var exists = await db.DocumentTemplates.AnyAsync(t => t.Id == id, ct);
+        if (!exists)
+            return NotFound();
+
+        var versions = await db.DocumentTemplateVersions.AsNoTracking()
+            .Where(v => v.TemplateId == id)
+            .OrderByDescending(v => v.VersionNumber)
+            .ToListAsync(ct);
+
+        var versionIds = versions.Select(v => v.Id).ToArray();
+        var vars = await db.DocumentTemplateVariables.AsNoTracking()
+            .Where(v => v.TemplateVersionId.HasValue && versionIds.Contains(v.TemplateVersionId.Value))
+            .OrderBy(v => v.SortOrder)
+            .ToListAsync(ct);
+
+        var grouped = vars.GroupBy(v => v.TemplateVersionId!.Value).ToDictionary(g => g.Key, g => g.ToList());
+        return Ok(versions.Select(v => MapVersionResponse(v, grouped.GetValueOrDefault(v.Id, new List<DocumentTemplateVariable>())
+            .Select(MapVariableResponse).ToList())).ToList());
+    }
+
+    [HttpPost("document-templates/{id:guid}/test-run")]
+    public async Task<ActionResult<TemplateTestRunResponse>> TestRunTemplate(
+        Guid id,
+        [FromBody] TemplateTestRunRequest body,
+        CancellationToken ct)
+    {
+        var template = await db.DocumentTemplates.Include(t => t.CurrentVersion).FirstOrDefaultAsync(t => t.Id == id, ct);
+        if (template is null || template.CurrentVersion is null)
+            return NotFound(new { message = "Template ou version courante introuvable." });
+
+        var versionId = template.CurrentVersion.Id;
+        var requiredVariables = await db.DocumentTemplateVariables.AsNoTracking()
+            .Where(v => v.TemplateVersionId == versionId && v.IsRequired)
+            .Select(v => v.VariableName)
+            .ToListAsync(ct);
+        var missing = requiredVariables.Where(n => !body.SampleData.ContainsKey(n)).ToList();
+        var rendered = templateEngine.RenderContent(template.CurrentVersion.StructuredContent, body.SampleData);
+
+        return Ok(new TemplateTestRunResponse(rendered, missing, $"PREVIEW_{template.Code}.pdf"));
     }
 
     [HttpPost("document-templates/{id:guid}/generate")]
@@ -400,27 +804,34 @@ public class DocumentationDataController(
 
         var template = await db.DocumentTemplates
             .Include(t => t.DocumentType)
+            .Include(t => t.CurrentVersion)
             .FirstOrDefaultAsync(t => t.Id == id, ct);
         if (template is null)
             return NotFound();
+        if (!template.IsActive)
+            return BadRequest(new { message = "Ce template est inactif." });
 
         var typeId = template.DocumentTypeId ?? body?.DocumentTypeId;
         if (!typeId.HasValue || typeId == Guid.Empty)
             return BadRequest(new { message = "Le modèle doit être lié à un type de document ou documentTypeId doit être fourni." });
 
         var now = DateTimeOffset.UtcNow;
-        var fileName = $"GEN_{template.Code}_{now:yyyyMMddHHmmss}.pdf";
-        var uri = $"https://storage.local/mykyntus/generated/{tenantAccessor.ResolvedTenantId}/{fileName}";
+        var version = template.CurrentVersion;
+        if (version is null)
+            return BadRequest(new { message = "Aucune version active n'est publiée sur ce template." });
+        var rendered = templateEngine.RenderContent(version.StructuredContent, body?.Variables ?? new Dictionary<string, string>());
+        var (fileName, uri, size) = pdfExport.Export(template.Code, tenantAccessor.ResolvedTenantId, rendered);
         var gen = new GeneratedDocument
         {
             Id = Guid.NewGuid(),
             DocumentRequestId = body?.DocumentRequestId,
             OwnerUserId = userContext.UserId.Value,
             DocumentTypeId = typeId,
+            TemplateVersionId = version.Id,
             FileName = fileName,
             StorageUri = uri,
             MimeType = "application/pdf",
-            FileSizeBytes = 0,
+            FileSizeBytes = size,
             Status = GeneratedDocumentStatus.Generated,
             VersionNumber = 1,
             CreatedAt = now,
@@ -627,6 +1038,162 @@ public class DocumentationDataController(
         return await db.OrganisationUnits.AsNoTracking()
             .Where(x => ids.Contains(x.Id))
             .ToDictionaryAsync(x => x.Id, ct);
+    }
+
+    private static string NormalizeSource(string source)
+    {
+        var normalized = source.Trim().ToUpperInvariant();
+        return normalized is "UPLOAD" or "RULE_BASED" ? normalized : "UPLOAD";
+    }
+
+    private static string NormalizeVersionStatus(string status)
+    {
+        var normalized = status.Trim().ToLowerInvariant();
+        return normalized is "draft" or "published" or "archived" ? normalized : "draft";
+    }
+
+    private async Task<DocumentTemplateVersion> CreateTemplateVersionInternalAsync(
+        DocumentTemplate template,
+        string structuredContent,
+        string status,
+        string? originalAssetUri,
+        IReadOnlyList<TemplateVariableInput> variables,
+        Guid? createdByUserId,
+        CancellationToken ct)
+    {
+        var maxVersion = await db.DocumentTemplateVersions
+            .Where(v => v.TemplateId == template.Id)
+            .MaxAsync(v => (int?)v.VersionNumber, ct) ?? 0;
+
+        var now = DateTimeOffset.UtcNow;
+        var version = new DocumentTemplateVersion
+        {
+            Id = Guid.NewGuid(),
+            TemplateId = template.Id,
+            TenantId = tenantAccessor.ResolvedTenantId,
+            VersionNumber = maxVersion + 1,
+            Status = status,
+            StructuredContent = string.IsNullOrWhiteSpace(structuredContent) ? "{}" : structuredContent,
+            OriginalAssetUri = string.IsNullOrWhiteSpace(originalAssetUri) ? null : originalAssetUri.Trim(),
+            CreatedByUserId = createdByUserId,
+            CreatedAt = now,
+            PublishedAt = status == "published" ? now : null,
+        };
+        db.DocumentTemplateVersions.Add(version);
+        await db.SaveChangesAsync(ct);
+
+        var rows = variables.Select((v, index) => new DocumentTemplateVariable
+        {
+            Id = Guid.NewGuid(),
+            TemplateId = template.Id,
+            TemplateVersionId = version.Id,
+            VariableName = v.Name.Trim(),
+            VariableType = string.IsNullOrWhiteSpace(v.Type) ? "text" : v.Type.Trim().ToLowerInvariant(),
+            IsRequired = v.IsRequired,
+            DefaultValue = string.IsNullOrWhiteSpace(v.DefaultValue) ? null : v.DefaultValue.Trim(),
+            ValidationRule = string.IsNullOrWhiteSpace(v.ValidationRule) ? null : v.ValidationRule.Trim(),
+            SortOrder = index,
+        })
+            .Where(v => IsValidVariableName(v.VariableName))
+            .Take(MaxTemplateVariables)
+            .ToList();
+        if (rows.Count > 0)
+            db.DocumentTemplateVariables.AddRange(rows);
+        await db.SaveChangesAsync(ct);
+        return version;
+    }
+
+    private static DocumentTemplateVersionResponse MapVersionResponse(
+        DocumentTemplateVersion version,
+        IReadOnlyList<DocumentTemplateVariableResponse> variables) =>
+        new(
+            version.Id.ToString(),
+            version.VersionNumber,
+            version.Status,
+            version.StructuredContent,
+            version.OriginalAssetUri,
+            version.CreatedAt.ToString("O"),
+            version.PublishedAt?.ToString("O"),
+            variables);
+
+    private static DocumentTemplateVariableResponse MapVariableResponse(DocumentTemplateVariable v) =>
+        new(v.Id.ToString(), v.VariableName, v.VariableType, v.IsRequired, v.DefaultValue, v.ValidationRule, v.SortOrder);
+
+    private static DocumentTemplateVariableResponse ToVariableResponse(TemplateVariableInput v, int order) =>
+        new(Guid.Empty.ToString(), v.Name, v.Type, v.IsRequired, v.DefaultValue, v.ValidationRule, order);
+
+    private static bool IsValidVariableName(string name) =>
+        !string.IsNullOrWhiteSpace(name) && name.All(c => char.IsLetterOrDigit(c) || c == '_');
+
+    private static bool IsValidTemplateCode(string code) =>
+        !string.IsNullOrWhiteSpace(code) && code.All(c => char.IsLetterOrDigit(c) || c is '_' or '-');
+
+    /// <summary>Aligné sur les filtres de <see cref="GetDocumentRequests"/> — refuse la fuite hors périmètre rôle.</summary>
+    private async Task<bool> CanActorViewDocumentRequestAsync(DocumentRequest r, CancellationToken ct)
+    {
+        if (!userContext.IsComplete || !userContext.Role.HasValue || !userContext.UserId.HasValue)
+            return false;
+
+        switch (userContext.Role.Value)
+        {
+            case AppRole.Rh:
+            case AppRole.Admin:
+            case AppRole.Audit:
+                return true;
+            case AppRole.Pilote:
+                var uid = userContext.UserId.Value;
+                return r.RequesterUserId == uid || r.BeneficiaryUserId == uid;
+            case AppRole.Coach:
+                var pilotIdsCoach = await db.DirectoryUsers.AsNoTracking()
+                    .Where(u => u.Role == AppRole.Pilote && u.CoachId == userContext.UserId!.Value)
+                    .Select(u => u.Id)
+                    .ToListAsync(ct);
+                return pilotIdsCoach.Contains(r.RequesterUserId) ||
+                    (r.BeneficiaryUserId.HasValue && pilotIdsCoach.Contains(r.BeneficiaryUserId.Value));
+            case AppRole.Manager:
+            case AppRole.Rp:
+                if (userContext.ScopeCoachId.HasValue)
+                {
+                    var pilotIdsScope = await db.DirectoryUsers.AsNoTracking()
+                        .Where(u => u.Role == AppRole.Pilote && u.CoachId == userContext.ScopeCoachId)
+                        .Select(u => u.Id)
+                        .ToListAsync(ct);
+                    return pilotIdsScope.Contains(r.RequesterUserId) ||
+                        (r.BeneficiaryUserId.HasValue && pilotIdsScope.Contains(r.BeneficiaryUserId.Value));
+                }
+
+                if (userContext.ScopeManagerId.HasValue && !userContext.ScopeCoachId.HasValue &&
+                    userContext.Role == AppRole.Rp)
+                {
+                    var coachIds = await db.DirectoryUsers.AsNoTracking()
+                        .Where(u => u.Role == AppRole.Coach && u.ManagerId == userContext.ScopeManagerId)
+                        .Select(u => u.Id)
+                        .ToListAsync(ct);
+                    var pilotIdsRp = await db.DirectoryUsers.AsNoTracking()
+                        .Where(u =>
+                            u.Role == AppRole.Pilote &&
+                            u.CoachId.HasValue &&
+                            coachIds.Contains(u.CoachId!.Value))
+                        .Select(u => u.Id)
+                        .ToListAsync(ct);
+                    return pilotIdsRp.Contains(r.RequesterUserId) ||
+                        (r.BeneficiaryUserId.HasValue && pilotIdsRp.Contains(r.BeneficiaryUserId.Value));
+                }
+
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    public sealed class WorkflowValidatePutBody
+    {
+        public string? Comment { get; set; }
+    }
+
+    public sealed class WorkflowRejectPutBody
+    {
+        public string? RejectionReason { get; set; }
     }
 
     public sealed class CreateDocumentRequestBody

@@ -24,7 +24,24 @@ export class DocumentationApiService {
   }
 
   createDocumentRequest(body: CreateDocumentRequestPayload): Observable<DocumentRequestDto> {
+    console.log('SERVICE CALLED', 'DocumentationApiService.createDocumentRequest');
     return this.data.createDocumentRequest(body);
+  }
+
+  /**
+   * Utilise POST /workflow/* (toujours présent sur le backend) — évite le 404 si les routes PUT
+   * `document-requests/{id}/approve` ne sont pas déployées.
+   */
+  validateDocumentRequest(internalId: string, comment?: string | null): Observable<DocumentRequestDto> {
+    return this.data.workflowValidate({ documentRequestId: internalId, comment });
+  }
+
+  approveDocumentRequest(internalId: string): Observable<DocumentRequestDto> {
+    return this.data.workflowApprove({ documentRequestId: internalId });
+  }
+
+  rejectDocumentRequest(internalId: string, rejectionReason: string): Observable<DocumentRequestDto> {
+    return this.data.workflowReject({ documentRequestId: internalId, rejectionReason });
   }
 
   getDataDocumentRequests(

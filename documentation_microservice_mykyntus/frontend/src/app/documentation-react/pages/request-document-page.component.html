@@ -26,6 +26,18 @@
     @if (submitSuccess) {
       <p class="text-sm text-emerald-400 mb-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
         Demande enregistrée avec succès.
+        @if (submitSuccessRef) {
+          <br />
+          Numéro affiché (colonne <code>request_number</code>) : <strong>{{ submitSuccessRef }}</strong>
+        }
+        @if (submitSuccessInternalId) {
+          <br />
+          Id technique en base (<code>id</code>) : <code>{{ submitSuccessInternalId }}</code>
+        }
+        @if (submitSuccessTenant) {
+          <br />
+          Tenant (<code>tenant_id</code>) : <code>{{ submitSuccessTenant }}</code>
+        }
       </p>
     }
 

@@ -36,6 +36,7 @@ internal static class DocumentRequestMapper
             r.RequesterUserId.ToString(),
             r.BeneficiaryUserId?.ToString(),
             r.OrganizationalUnitId?.ToString(),
+            r.DocumentTypeId?.ToString(),
             r.Reason,
             r.IsCustomType,
             allowed,

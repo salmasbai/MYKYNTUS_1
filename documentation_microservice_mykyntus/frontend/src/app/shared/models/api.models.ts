@@ -29,6 +29,8 @@ export interface DocumentRequestDto {
   requesterUserId: string | null;
   beneficiaryUserId: string | null;
   organizationalUnitId: string | null;
+  /** Aligné backend : absent si ancienne réponse ou demande sans type catalogue. */
+  documentTypeId?: string | null;
   reason: string | null;
   isCustomType: boolean;
   /** Actions autorisées pour l’acteur courant — fourni par le backend. */
@@ -41,10 +43,47 @@ export interface DocumentTemplateListItemDto {
   id: string;
   code: string;
   name: string;
+  source: string;
+  isActive: boolean;
   documentTypeId: string | null;
   documentTypeName: string | null;
   variableNames: string[];
+  currentVersionId: string | null;
+  currentVersionNumber: number | null;
   updatedAt: string;
+}
+
+export interface TemplateVariableDto {
+  id: string;
+  name: string;
+  type: 'text' | 'date' | 'number' | string;
+  isRequired: boolean;
+  defaultValue: string | null;
+  validationRule: string | null;
+  sortOrder: number;
+}
+
+export interface TemplateVersionDto {
+  id: string;
+  versionNumber: number;
+  status: 'draft' | 'published' | 'archived' | string;
+  structuredContent: string;
+  originalAssetUri: string | null;
+  createdAt: string;
+  publishedAt: string | null;
+  variables: TemplateVariableDto[];
+}
+
+export interface DocumentTemplateDetailDto {
+  id: string;
+  code: string;
+  name: string;
+  source: string;
+  isActive: boolean;
+  documentTypeId: string | null;
+  documentTypeName: string | null;
+  updatedAt: string;
+  currentVersion: TemplateVersionDto | null;
 }
 
 export interface AuditLogDto {
@@ -95,7 +134,14 @@ export interface DirectoryUserDto {
 export interface DbStatusDto {
   connected: boolean;
   schema?: string;
+  serverDatabase?: string;
+  configuredHost?: string;
+  configuredPort?: number;
+  configuredDatabase?: string;
   documentTypeCount?: number;
+  documentRequestCount?: number;
+  documentRequestTotalAllTenants?: number;
+  hint?: string;
   message?: string;
   errorMessage?: string;
 }

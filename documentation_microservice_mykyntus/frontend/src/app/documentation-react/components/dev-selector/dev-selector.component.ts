@@ -135,6 +135,13 @@ export class DevSelectorComponent implements OnInit, OnDestroy {
   onRoleChange(role: DocumentationRole): void {
     this.identity.clearOrgScope();
     this.selectedRole = role;
+    const apiRole = mapDocumentationRoleToApiRole(role);
+    // RH / Admin / Audit voient tout le tenant côté API : ne pas attendre pôle–cellule–département
+    // (sinon scopedUsersForRole reste vide → en-têtes inchangées → file RH filtrée comme pilote).
+    if (apiRole === 'rh' || apiRole === 'admin' || apiRole === 'audit') {
+      this.refreshOrgScopedLists();
+      return;
+    }
     if (this.orgSelectionComplete()) {
       this.refreshOrgScopedLists();
     }
@@ -268,6 +275,33 @@ export class DevSelectorComponent implements OnInit, OnDestroy {
   }
 
   private refreshOrgScopedLists(): void {
+    const apiRoleEarly = mapDocumentationRoleToApiRole(this.selectedRole);
+    if (apiRoleEarly === 'rh' || apiRoleEarly === 'admin' || apiRoleEarly === 'audit') {
+      this.data.getDirectoryUsers().subscribe({
+        next: (std) => {
+          this.scopedUsersForRole = std.filter((u) => u.role.toLowerCase() === apiRoleEarly);
+          this.managersForDept = [];
+          this.coachesForManager = [];
+          this.rpUsersForDept = [];
+          if (
+            ['Pilote', 'Coach', 'RH', 'Admin', 'Audit'].includes(this.selectedRole) &&
+            this.scopedUsersForRole.length &&
+            !this.selectedUserId
+          ) {
+            this.selectedUserId = this.scopedUsersForRole[0].id;
+          }
+          this.finalizeDevContext();
+        },
+        error: () => {
+          this.scopedUsersForRole = [];
+          this.managersForDept = [];
+          this.coachesForManager = [];
+          this.rpUsersForDept = [];
+        },
+      });
+      return;
+    }
+
     const pole = this.selectedPoleId;
     const cell = this.selectedCelluleId;
     const dept = this.selectedDepartementId;
@@ -302,9 +336,13 @@ export class DevSelectorComponent implements OnInit, OnDestroy {
 
         const apiRole = mapDocumentationRoleToApiRole(this.selectedRole);
 
-        const std$ = ['pilote', 'coach', 'rh', 'admin', 'audit'].includes(apiRole)
-          ? this.data.getUsersByRoleAndOrg(apiRole, pole, cell, dept)
-          : of([] as DirectoryUserDto[]);
+        // RH/Admin/Audit doivent pouvoir voir l'ensemble du tenant (pas seulement le département sélectionné).
+        const std$ =
+          apiRole === 'rh' || apiRole === 'admin' || apiRole === 'audit'
+            ? this.data.getDirectoryUsers()
+            : ['pilote', 'coach'].includes(apiRole)
+              ? this.data.getUsersByRoleAndOrg(apiRole, pole, cell, dept)
+              : of([] as DirectoryUserDto[]);
 
         const rp$ =
           this.selectedRole === 'RP'
@@ -318,7 +356,10 @@ export class DevSelectorComponent implements OnInit, OnDestroy {
 
         forkJoin({ std: std$, rp: rp$, coaches: coaches$ }).subscribe({
           next: ({ std, rp, coaches }) => {
-            this.scopedUsersForRole = std;
+            this.scopedUsersForRole =
+              apiRole === 'rh' || apiRole === 'admin' || apiRole === 'audit'
+                ? std.filter((u) => u.role.toLowerCase() === apiRole)
+                : std;
             this.rpUsersForDept = rp;
             this.coachesForManager = coaches;
             if (this.selectedRole === 'Manager' && coaches.length && !this.selectedCoachScopeId) {
@@ -420,7 +461,9 @@ export class DevSelectorComponent implements OnInit, OnDestroy {
   private applyStandardUser(user: DirectoryUserDto): void {
     this.identity.clearOrgScope();
     const tenantDefault =
-      environment.documentationUserContextHeaders?.[DocumentationHeaders.tenantId]?.trim() ?? 'atlas-tech-demo';
+      this.identity.getTenantId() ||
+      environment.documentationUserContextHeaders?.[DocumentationHeaders.tenantId]?.trim() ||
+      'atlas-tech-demo';
     this.identity.applyProfile(user);
     this.identity.setTenantId(tenantDefault);
     this.nav.setRole(mapApiRoleToDocumentationRole(user.role));
@@ -429,7 +472,9 @@ export class DevSelectorComponent implements OnInit, OnDestroy {
 
   private applyManagerContext(manager: DirectoryUserDto, coach: DirectoryUserDto): void {
     const tenantDefault =
-      environment.documentationUserContextHeaders?.[DocumentationHeaders.tenantId]?.trim() ?? 'atlas-tech-demo';
+      this.identity.getTenantId() ||
+      environment.documentationUserContextHeaders?.[DocumentationHeaders.tenantId]?.trim() ||
+      'atlas-tech-demo';
     this.identity.applyProfile(manager);
     this.identity.setTenantId(tenantDefault);
     this.identity.setOrgScope(null, coach.id);
@@ -443,7 +488,9 @@ export class DevSelectorComponent implements OnInit, OnDestroy {
       return;
     }
     const tenantDefault =
-      environment.documentationUserContextHeaders?.[DocumentationHeaders.tenantId]?.trim() ?? 'atlas-tech-demo';
+      this.identity.getTenantId() ||
+      environment.documentationUserContextHeaders?.[DocumentationHeaders.tenantId]?.trim() ||
+      'atlas-tech-demo';
     this.identity.applyProfile(rp);
     this.identity.setTenantId(tenantDefault);
     this.identity.setOrgScope(this.selectedRpScopeManagerId || null, this.selectedRpScopeCoachId || null);

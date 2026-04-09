@@ -1,3 +1,4 @@
+using System.Text.Json;
 using DocumentationBackend.Api;
 using DocumentationBackend.Context;
 using DocumentationBackend.Data;
@@ -229,6 +230,9 @@ public class DocumentationWorkflowService(
         string? errorMessage,
         string? requestNumber)
     {
+        // Colonne PostgreSQL jsonb : une chaîne libre n’est pas du JSON valide → 23502/22P02 sans sérialisation.
+        string? detailsJson = string.IsNullOrWhiteSpace(details) ? null : JsonSerializer.Serialize(details);
+
         db.AuditLogs.Add(new AuditLog
         {
             Id = Guid.NewGuid(),
@@ -239,7 +243,7 @@ public class DocumentationWorkflowService(
             EntityType = "document_request",
             EntityId = entityId,
             CorrelationId = correlationContext.CorrelationId,
-            Details = details,
+            Details = detailsJson,
             Success = success,
             ErrorMessage = errorMessage,
             RequestNumber = requestNumber,
