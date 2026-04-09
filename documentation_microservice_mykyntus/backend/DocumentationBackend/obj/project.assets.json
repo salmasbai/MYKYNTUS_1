@@ -217,19 +217,19 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\saLMa.essbai\\.nuget\\packages\\": {}
+    "C:\\Users\\Pc\\.nuget\\packages\\": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\saLMa.essbai\\Downloads\\MyKyntus_version_actuel\\MyKyntus_V14\\documentation_microservice_mykyntus\\backend\\DocumentationBackend\\DocumentationBackend.csproj",
+      "projectUniqueName": "C:\\Users\\Pc\\Desktop\\MYKYNTUS_1\\documentation_microservice_mykyntus\\backend\\DocumentationBackend\\DocumentationBackend.csproj",
       "projectName": "DocumentationBackend",
-      "projectPath": "C:\\Users\\saLMa.essbai\\Downloads\\MyKyntus_version_actuel\\MyKyntus_V14\\documentation_microservice_mykyntus\\backend\\DocumentationBackend\\DocumentationBackend.csproj",
-      "packagesPath": "C:\\Users\\saLMa.essbai\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\saLMa.essbai\\Downloads\\MyKyntus_version_actuel\\MyKyntus_V14\\documentation_microservice_mykyntus\\backend\\DocumentationBackend\\obj\\",
+      "projectPath": "C:\\Users\\Pc\\Desktop\\MYKYNTUS_1\\documentation_microservice_mykyntus\\backend\\DocumentationBackend\\DocumentationBackend.csproj",
+      "packagesPath": "C:\\Users\\Pc\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\Pc\\Desktop\\MYKYNTUS_1\\documentation_microservice_mykyntus\\backend\\DocumentationBackend\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "C:\\Users\\saLMa.essbai\\AppData\\Roaming\\NuGet\\NuGet.Config"
+        "C:\\Users\\Pc\\AppData\\Roaming\\NuGet\\NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "net10.0"
@@ -253,7 +253,7 @@
         "auditLevel": "low",
         "auditMode": "all"
       },
-      "SdkAnalysisLevel": "10.0.100"
+      "SdkAnalysisLevel": "10.0.200"
     },
     "frameworks": {
       "net10.0": {
@@ -295,7 +295,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.103/PortableRuntimeIdentifierGraph.json",
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.201/PortableRuntimeIdentifierGraph.json",
         "packagesToPrune": {
           "Microsoft.AspNetCore": "(,10.0.32767]",
           "Microsoft.AspNetCore.Antiforgery": "(,10.0.32767]",

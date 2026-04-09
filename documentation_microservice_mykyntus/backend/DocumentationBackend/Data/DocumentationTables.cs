@@ -37,6 +37,7 @@ public class DocumentType
     public ICollection<DocumentRequest> DocumentRequests { get; set; } = new List<DocumentRequest>();
     public ICollection<GeneratedDocument> GeneratedDocuments { get; set; } = new List<GeneratedDocument>();
     public ICollection<PermissionPolicy> PermissionPolicies { get; set; } = new List<PermissionPolicy>();
+    public ICollection<DocumentTemplate> DocumentTemplates { get; set; } = new List<DocumentTemplate>();
 }
 
 public class WorkflowStep
@@ -86,6 +87,10 @@ public class DocumentRequest
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
 
+    /// <summary>Rattachement organisationnel au moment de la demande (département / unité).</summary>
+    public Guid? OrganizationalUnitId { get; set; }
+
+    public OrganisationUnit? OrganizationalUnit { get; set; }
     public DocumentType? DocumentType { get; set; }
     public ICollection<GeneratedDocument> GeneratedDocuments { get; set; } = new List<GeneratedDocument>();
 }
@@ -116,6 +121,9 @@ public class DocumentTemplate
     public string Code { get; set; } = "";
     public string Name { get; set; } = "";
     public DateTimeOffset UpdatedAt { get; set; }
+
+    public Guid? DocumentTypeId { get; set; }
+    public DocumentType? DocumentType { get; set; }
 
     public ICollection<DocumentTemplateVariable> Variables { get; set; } = new List<DocumentTemplateVariable>();
 }

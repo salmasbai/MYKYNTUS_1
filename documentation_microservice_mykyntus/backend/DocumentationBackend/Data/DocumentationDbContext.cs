@@ -151,6 +151,10 @@ public class DocumentationDbContext : DbContext
                 .WithMany(t => t.DocumentRequests)
                 .HasForeignKey(x => x.DocumentTypeId)
                 .OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(x => x.OrganizationalUnit)
+                .WithMany()
+                .HasForeignKey(x => x.OrganizationalUnitId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<GeneratedDocument>(e =>
@@ -176,6 +180,10 @@ public class DocumentationDbContext : DbContext
             e.HasIndex(x => x.Code).IsUnique();
             e.Property(x => x.Code).HasMaxLength(64);
             e.Property(x => x.Name).HasMaxLength(255);
+            e.HasOne(x => x.DocumentType)
+                .WithMany(t => t.DocumentTemplates)
+                .HasForeignKey(x => x.DocumentTypeId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<DocumentTemplateVariable>(e =>

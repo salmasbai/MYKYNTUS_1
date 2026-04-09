@@ -121,8 +121,13 @@ public class DocumentationDataController(
 
         if (roleFilter.HasValue)
         {
-            var ids = DemoActors.GetUserIdsForRole(roleFilter.Value);
-            baseQuery = baseQuery.Where(r => ids.Contains(r.RequesterUserId));
+            var roleUserIds = await db.DirectoryUsers.AsNoTracking()
+                .Where(u => u.Role == roleFilter.Value)
+                .Select(u => u.Id)
+                .ToListAsync(ct);
+            baseQuery = roleUserIds.Count > 0
+                ? baseQuery.Where(r => roleUserIds.Contains(r.RequesterUserId))
+                : baseQuery.Where(static r => false);
         }
 
         // Périmètre hiérarchique (manager / RP) : demandes des pilotes encadrés par le coach choisi.
@@ -168,12 +173,15 @@ public class DocumentationDataController(
                 .Where(t => typeIds.Contains(t.Id))
                 .ToDictionaryAsync(t => t.Id, ct);
 
+        var nameIds = rows.SelectMany(r => new[] { r.RequesterUserId, r.BeneficiaryUserId ?? Guid.Empty }).ToArray();
+        var displayNames = await DocumentRequestMappingHelper.LoadDisplayNamesAsync(db, nameIds, ct);
+
         var items = rows.Select(r =>
         {
             DocumentType? typeRow = null;
             if (r.DocumentTypeId.HasValue && typeMap.TryGetValue(r.DocumentTypeId.Value, out var dt))
                 typeRow = dt;
-            return DocumentRequestMapper.ToResponse(r, typeRow, userContext);
+            return DocumentRequestMapper.ToResponse(r, typeRow, userContext, displayNames);
         }).ToList();
         return new PagedResponse<DocumentRequestResponse>(items, total, page, pageSize);
     }
@@ -191,7 +199,11 @@ public class DocumentationDataController(
         if (r.DocumentTypeId.HasValue)
             typeRow = await db.DocumentTypes.AsNoTracking().FirstOrDefaultAsync(t => t.Id == r.DocumentTypeId.Value, ct);
 
-        return DocumentRequestMapper.ToResponse(r, typeRow, userContext);
+        var names = await DocumentRequestMappingHelper.LoadDisplayNamesAsync(
+            db,
+            new[] { r.RequesterUserId, r.BeneficiaryUserId ?? Guid.Empty },
+            ct);
+        return DocumentRequestMapper.ToResponse(r, typeRow, userContext, names);
     }
 
     [HttpPost("document-requests")]
@@ -235,6 +247,9 @@ public class DocumentationDataController(
             return Problem(detail: ex.Message, title: "Numérotation indisponible");
         }
 
+        var requesterRow = await db.DirectoryUsers.AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == requesterId, ct);
+
         var now = DateTimeOffset.UtcNow;
         var entity = new DocumentRequest
         {
@@ -251,6 +266,7 @@ public class DocumentationDataController(
             Status = DocumentRequestStatus.Pending,
             CreatedAt = now,
             UpdatedAt = now,
+            OrganizationalUnitId = requesterRow?.DepartementId,
         };
 
         db.DocumentRequests.Add(entity);
@@ -275,7 +291,11 @@ public class DocumentationDataController(
         if (!entity.IsCustomType && entity.DocumentTypeId.HasValue)
             typeRow = await db.DocumentTypes.AsNoTracking().FirstOrDefaultAsync(t => t.Id == entity.DocumentTypeId.Value, ct);
 
-        return Ok(DocumentRequestMapper.ToResponse(entity, typeRow, userContext));
+        var displayNames = await DocumentRequestMappingHelper.LoadDisplayNamesAsync(
+            db,
+            new[] { entity.RequesterUserId, entity.BeneficiaryUserId ?? Guid.Empty },
+            ct);
+        return Ok(DocumentRequestMapper.ToResponse(entity, typeRow, userContext, displayNames));
     }
 
     [HttpGet("audit-logs")]
@@ -315,8 +335,13 @@ public class DocumentationDataController(
 
         if (roleFilter.HasValue)
         {
-            var ids = DemoActors.GetUserIdsForRole(roleFilter.Value);
-            query = query.Where(x => x.ActorUserId.HasValue && ids.Contains(x.ActorUserId.Value));
+            var actorIdsForRole = await db.DirectoryUsers.AsNoTracking()
+                .Where(u => u.Role == roleFilter.Value)
+                .Select(u => u.Id)
+                .ToListAsync(ct);
+            query = actorIdsForRole.Count > 0
+                ? query.Where(x => x.ActorUserId.HasValue && actorIdsForRole.Contains(x.ActorUserId.Value))
+                : query.Where(static x => false);
         }
 
         query = ApplyAuditSort(query, sortField, desc);
@@ -327,10 +352,13 @@ public class DocumentationDataController(
             .Take(pageSize)
             .ToListAsync(ct);
 
+        var auditActorIds = rows.Where(a => a.ActorUserId.HasValue).Select(a => a.ActorUserId!.Value).ToArray();
+        var auditNames = await DocumentRequestMappingHelper.LoadDisplayNamesAsync(db, auditActorIds, ct);
+
         var items = rows.Select(a => new AuditLogResponse(
             a.Id.ToString(),
             a.OccurredAt.ToString("O"),
-            a.ActorUserId.HasValue ? DemoActors.ResolveDisplayName(a.ActorUserId.Value) : null,
+            a.ActorUserId.HasValue ? DocumentRequestMappingHelper.ResolveName(auditNames, a.ActorUserId.Value) : null,
             a.ActorUserId.HasValue ? a.ActorUserId.Value.ToString() : null,
             a.Action,
             a.EntityType,
@@ -340,6 +368,67 @@ public class DocumentationDataController(
             a.CorrelationId.HasValue ? a.CorrelationId.Value.ToString() : null)).ToList();
 
         return new PagedResponse<AuditLogResponse>(items, total, page, pageSize);
+    }
+
+    [HttpGet("document-templates")]
+    public async Task<ActionResult<IReadOnlyList<DocumentTemplateListItemResponse>>> GetDocumentTemplates(CancellationToken ct)
+    {
+        var rows = await db.DocumentTemplates.AsNoTracking()
+            .Include(t => t.DocumentType)
+            .Include(t => t.Variables)
+            .OrderBy(t => t.Code)
+            .ToListAsync(ct);
+        var list = rows.Select(t => new DocumentTemplateListItemResponse(
+            t.Id.ToString(),
+            t.Code,
+            t.Name,
+            t.DocumentTypeId?.ToString(),
+            t.DocumentType?.Name,
+            t.Variables.OrderBy(v => v.SortOrder).Select(v => v.VariableName).ToList(),
+            t.UpdatedAt.ToString("O"))).ToList();
+        return Ok(list);
+    }
+
+    [HttpPost("document-templates/{id:guid}/generate")]
+    public async Task<ActionResult<DocumentTemplateGenerateResponse>> GenerateFromTemplate(
+        Guid id,
+        [FromBody] DocumentTemplateGenerateRequest? body,
+        CancellationToken ct)
+    {
+        if (!userContext.UserId.HasValue)
+            return Unauthorized();
+
+        var template = await db.DocumentTemplates
+            .Include(t => t.DocumentType)
+            .FirstOrDefaultAsync(t => t.Id == id, ct);
+        if (template is null)
+            return NotFound();
+
+        var typeId = template.DocumentTypeId ?? body?.DocumentTypeId;
+        if (!typeId.HasValue || typeId == Guid.Empty)
+            return BadRequest(new { message = "Le modèle doit être lié à un type de document ou documentTypeId doit être fourni." });
+
+        var now = DateTimeOffset.UtcNow;
+        var fileName = $"GEN_{template.Code}_{now:yyyyMMddHHmmss}.pdf";
+        var uri = $"https://storage.local/mykyntus/generated/{tenantAccessor.ResolvedTenantId}/{fileName}";
+        var gen = new GeneratedDocument
+        {
+            Id = Guid.NewGuid(),
+            DocumentRequestId = body?.DocumentRequestId,
+            OwnerUserId = userContext.UserId.Value,
+            DocumentTypeId = typeId,
+            FileName = fileName,
+            StorageUri = uri,
+            MimeType = "application/pdf",
+            FileSizeBytes = 0,
+            Status = GeneratedDocumentStatus.Generated,
+            VersionNumber = 1,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+        db.GeneratedDocuments.Add(gen);
+        await db.SaveChangesAsync(ct);
+        return Ok(new DocumentTemplateGenerateResponse(gen.Id.ToString(), fileName, uri, gen.Status.ToString()));
     }
 
     /// <summary>
@@ -353,7 +442,7 @@ public class DocumentationDataController(
             .OrderBy(u => u.Nom)
             .ThenBy(u => u.Prenom)
             .ToListAsync(ct);
-        return await MapDirectoryUsersAsync(rows, ct);
+        return Ok(await MapDirectoryUsersAsync(rows, ct));
     }
 
     /// <summary>Profil de l’utilisateur identifié par <c>X-User-Id</c>.</summary>
@@ -462,7 +551,7 @@ public class DocumentationDataController(
             .OrderBy(u => u.Nom)
             .ThenBy(u => u.Prenom)
             .ToListAsync(ct);
-        return await MapDirectoryUsersAsync(rows, ct);
+        return Ok(await MapDirectoryUsersAsync(rows, ct));
     }
 
     /// <summary>Managers rattachés au département (hiérarchie métier + même triplet org).</summary>
@@ -476,7 +565,7 @@ public class DocumentationDataController(
             .OrderBy(u => u.Nom)
             .ThenBy(u => u.Prenom)
             .ToListAsync(ct);
-        return await MapDirectoryUsersAsync(rows, ct);
+        return Ok(await MapDirectoryUsersAsync(rows, ct));
     }
 
     /// <summary>Coachs sous un manager (optionnellement filtrés par département).</summary>
@@ -491,7 +580,7 @@ public class DocumentationDataController(
         if (departementId.HasValue)
             q = q.Where(u => u.DepartementId == departementId.Value);
         var rows = await q.OrderBy(u => u.Nom).ThenBy(u => u.Prenom).ToListAsync(ct);
-        return await MapDirectoryUsersAsync(rows, ct);
+        return Ok(await MapDirectoryUsersAsync(rows, ct));
     }
 
     /// <summary>Pilotes rattachés à un coach (optionnellement filtrés par département).</summary>
@@ -506,7 +595,7 @@ public class DocumentationDataController(
         if (departementId.HasValue)
             q = q.Where(u => u.DepartementId == departementId.Value);
         var rows = await q.OrderBy(u => u.Nom).ThenBy(u => u.Prenom).ToListAsync(ct);
-        return await MapDirectoryUsersAsync(rows, ct);
+        return Ok(await MapDirectoryUsersAsync(rows, ct));
     }
 
     private async Task<IReadOnlyList<DirectoryUserResponse>> MapDirectoryUsersAsync(IReadOnlyList<DirectoryUser> rows, CancellationToken ct)

@@ -24,8 +24,11 @@ import { DocumentationSidebarComponent } from '../documentation-sidebar/document
     DocumentationHeaderComponent,
   ],
   templateUrl: './documentation-shell.component.html',
+  styleUrl: './documentation-shell.component.css',
 })
 export class DocumentationShellComponent implements OnInit {
+  /** Bandeau dev : fixed plein écran en tête — la sidebar se cale dessous. */
+  readonly devBannerEnabled = environment.documentationDevToolsEnabled && !environment.production;
   readonly title$ = this.nav.activeTab$.pipe(
     map((tab) => this.nav.titleForActiveTab(tab, (k) => this.app.t(k))),
   );

@@ -1,5 +1,4 @@
 using DocumentationBackend.Context;
-using DocumentationBackend.Data;
 using DocumentationBackend.Data.Entities;
 
 namespace DocumentationBackend.Api;
@@ -9,15 +8,18 @@ internal static class DocumentRequestMapper
     internal static DocumentRequestResponse ToResponse(
         DocumentRequest r,
         DocumentType? documentType,
-        DocumentationUserContext userContext)
+        DocumentationUserContext userContext,
+        IReadOnlyDictionary<Guid, string> displayNames)
     {
         var typeLabel = r.IsCustomType
             ? (r.CustomTypeDescription ?? "Autre")
             : (documentType?.Name ?? "—");
         var displayId = !string.IsNullOrEmpty(r.RequestNumber) ? r.RequestNumber! : r.Id.ToString();
+
+        var requesterName = DocumentRequestMappingHelper.ResolveName(displayNames, r.RequesterUserId);
         var employeeName = r.BeneficiaryUserId.HasValue
-            ? $"{DemoActors.ResolveDisplayName(r.RequesterUserId)} → {DemoActors.ResolveDisplayName(r.BeneficiaryUserId.Value)}"
-            : DemoActors.ResolveDisplayName(r.RequesterUserId);
+            ? $"{requesterName} → {DocumentRequestMappingHelper.ResolveName(displayNames, r.BeneficiaryUserId.Value)}"
+            : requesterName;
 
         IReadOnlyList<string> allowed = Array.Empty<string>();
         if (userContext.IsComplete)
@@ -31,6 +33,9 @@ internal static class DocumentRequestMapper
             r.Status.ToString(),
             employeeName,
             r.RequesterUserId.ToString(),
+            r.RequesterUserId.ToString(),
+            r.BeneficiaryUserId?.ToString(),
+            r.OrganizationalUnitId?.ToString(),
             r.Reason,
             r.IsCustomType,
             allowed,

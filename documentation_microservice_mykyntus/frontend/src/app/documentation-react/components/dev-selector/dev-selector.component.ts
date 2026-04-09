@@ -28,6 +28,7 @@ const ROLE_OPTIONS: DocumentationRole[] = [
   standalone: true,
   imports: [CommonModule, FormsModule, AsyncPipe],
   templateUrl: './dev-selector.component.html',
+  styleUrl: './dev-selector.component.scss',
 })
 export class DevSelectorComponent implements OnInit, OnDestroy {
   readonly enabled = environment.documentationDevToolsEnabled && !environment.production;

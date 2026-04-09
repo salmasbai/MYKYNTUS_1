@@ -9,6 +9,7 @@ import type {
   DbStatusDto,
   DirectoryUserDto,
   DocumentRequestDto,
+  DocumentTemplateListItemDto,
   DocumentTypeDto,
   OrganizationalUnitSummaryDto,
   PagedResponse,
@@ -188,5 +189,19 @@ export class DocumentationDataApiService {
 
   workflowReject(body: { documentRequestId: string; rejectionReason: string }): Observable<DocumentRequestDto> {
     return this.http.post<DocumentRequestDto>(`${this.dataRoot}/workflow/reject`, body);
+  }
+
+  getDocumentTemplates(): Observable<DocumentTemplateListItemDto[]> {
+    return this.http.get<DocumentTemplateListItemDto[]>(`${this.dataRoot}/document-templates`);
+  }
+
+  generateFromDocumentTemplate(
+    templateId: string,
+    body: { documentRequestId?: string | null; documentTypeId?: string | null } = {},
+  ): Observable<{ generatedDocumentId: string; fileName: string; storageUri: string; status: string }> {
+    return this.http.post<{ generatedDocumentId: string; fileName: string; storageUri: string; status: string }>(
+      `${this.dataRoot}/document-templates/${encodeURIComponent(templateId)}/generate`,
+      body,
+    );
   }
 }

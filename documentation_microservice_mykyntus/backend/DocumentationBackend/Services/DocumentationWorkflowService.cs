@@ -54,7 +54,11 @@ public class DocumentationWorkflowService(
 
         var refreshed = await LoadRequestRowAsync(documentRequestId, ct);
         LogWorkflowCompleted("Validate", documentRequestId, actorUserId, role);
-        return (DocumentRequestMapper.ToResponse(refreshed, refreshed.DocumentType, userContext), StatusCodes.Status200OK, null);
+        var names = await DocumentRequestMappingHelper.LoadDisplayNamesAsync(
+            db,
+            new[] { refreshed.RequesterUserId, refreshed.BeneficiaryUserId ?? Guid.Empty },
+            ct);
+        return (DocumentRequestMapper.ToResponse(refreshed, refreshed.DocumentType, userContext, names), StatusCodes.Status200OK, null);
     }
 
     public async Task<(DocumentRequestResponse? response, int statusCode, string? error)> ApproveAsync(
@@ -102,7 +106,11 @@ public class DocumentationWorkflowService(
 
         var refreshed = await LoadRequestRowAsync(documentRequestId, ct);
         LogWorkflowCompleted("Approve", documentRequestId, actorUserId, role);
-        return (DocumentRequestMapper.ToResponse(refreshed, refreshed.DocumentType, userContext), StatusCodes.Status200OK, null);
+        var namesA = await DocumentRequestMappingHelper.LoadDisplayNamesAsync(
+            db,
+            new[] { refreshed.RequesterUserId, refreshed.BeneficiaryUserId ?? Guid.Empty },
+            ct);
+        return (DocumentRequestMapper.ToResponse(refreshed, refreshed.DocumentType, userContext, namesA), StatusCodes.Status200OK, null);
     }
 
     public async Task<(DocumentRequestResponse? response, int statusCode, string? error)> RejectAsync(
@@ -156,7 +164,11 @@ public class DocumentationWorkflowService(
 
         var refreshed = await LoadRequestRowAsync(documentRequestId, ct);
         LogWorkflowCompleted("Reject", documentRequestId, actorUserId, role, rejectionReason.Trim());
-        return (DocumentRequestMapper.ToResponse(refreshed, refreshed.DocumentType, userContext), StatusCodes.Status200OK, null);
+        var namesR = await DocumentRequestMappingHelper.LoadDisplayNamesAsync(
+            db,
+            new[] { refreshed.RequesterUserId, refreshed.BeneficiaryUserId ?? Guid.Empty },
+            ct);
+        return (DocumentRequestMapper.ToResponse(refreshed, refreshed.DocumentType, userContext, namesR), StatusCodes.Status200OK, null);
     }
 
     private (DocumentRequestResponse? response, int statusCode, string? error) FromFailure(

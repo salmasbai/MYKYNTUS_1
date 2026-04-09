@@ -26,12 +26,25 @@ export interface DocumentRequestDto {
   status: string;
   employeeName: string;
   employeeId: string | null;
+  requesterUserId: string | null;
+  beneficiaryUserId: string | null;
+  organizationalUnitId: string | null;
   reason: string | null;
   isCustomType: boolean;
   /** Actions autorisées pour l’acteur courant — fourni par le backend. */
   allowedActions: string[];
   rejectionReason: string | null;
   decidedAt: string | null;
+}
+
+export interface DocumentTemplateListItemDto {
+  id: string;
+  code: string;
+  name: string;
+  documentTypeId: string | null;
+  documentTypeName: string | null;
+  variableNames: string[];
+  updatedAt: string;
 }
 
 export interface AuditLogDto {

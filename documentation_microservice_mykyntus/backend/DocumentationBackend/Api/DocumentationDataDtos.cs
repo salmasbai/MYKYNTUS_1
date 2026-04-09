@@ -20,6 +20,9 @@ public sealed record DocumentRequestResponse(
     string Status,
     string EmployeeName,
     string? EmployeeId,
+    string? RequesterUserId,
+    string? BeneficiaryUserId,
+    string? OrganizationalUnitId,
     string? Reason,
     bool IsCustomType,
     IReadOnlyList<string> AllowedActions,
@@ -57,3 +60,24 @@ public sealed record DirectoryUserResponse(
     OrganizationalUnitSummary? Pole,
     OrganizationalUnitSummary? Cellule,
     OrganizationalUnitSummary? Departement);
+
+public sealed record DocumentTemplateListItemResponse(
+    string Id,
+    string Code,
+    string Name,
+    string? DocumentTypeId,
+    string? DocumentTypeName,
+    IReadOnlyList<string> VariableNames,
+    string UpdatedAt);
+
+public sealed record DocumentTemplateGenerateResponse(
+    string GeneratedDocumentId,
+    string FileName,
+    string StorageUri,
+    string Status);
+
+public sealed class DocumentTemplateGenerateRequest
+{
+    public Guid? DocumentRequestId { get; set; }
+    public Guid? DocumentTypeId { get; set; }
+}

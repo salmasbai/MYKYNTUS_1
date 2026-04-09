@@ -1,6 +1,9 @@
 <aside
-  class="documentation-sidebar h-screen bg-navy-900 border-r border-navy-800 flex flex-col fixed left-0 top-0 z-50 transition-all duration-300"
-  [ngClass]="collapsed() ? 'w-[70px]' : 'w-64'"
+  class="documentation-sidebar bg-navy-900 border-r border-navy-800 flex flex-col fixed left-0 z-50 transition-all duration-300"
+  [ngClass]="[
+    collapsed() ? 'w-[70px]' : 'w-64',
+    stackBelowDevBanner ? 'top-[60px] h-[calc(100vh-60px)]' : 'top-0 h-screen',
+  ]"
 >
   <div
     class="p-4 flex items-center gap-3 shrink-0"

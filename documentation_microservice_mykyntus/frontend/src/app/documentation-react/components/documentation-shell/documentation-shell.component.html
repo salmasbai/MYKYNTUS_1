@@ -1,20 +1,29 @@
-<div class="min-h-screen bg-navy-950 flex flex-col transition-colors duration-300">
-  <app-dev-selector></app-dev-selector>
-  <div class="flex flex-1 min-h-0">
-  <app-documentation-sidebar></app-documentation-sidebar>
-  <main
-    class="flex-1 transition-all duration-300 min-h-screen flex flex-col"
-    [ngClass]="(nav.sidebarCollapsed$ | async) ? 'ml-[70px]' : 'ml-64'"
+<div
+  class="min-h-screen bg-navy-950 flex flex-col transition-colors duration-300 w-full min-w-0 max-w-[100vw]"
+>
+  @if (devBannerEnabled) {
+    <app-dev-selector></app-dev-selector>
+  }
+
+  <!-- 1) Dev bar (fixed inside app-dev-selector) · 2) Header · 3) Main — pushed below 60px ribbon -->
+  <div
+    class="flex flex-1 min-h-0 min-w-0 w-full"
+    [class.main-container]="devBannerEnabled"
   >
-    <app-documentation-header [title]="(title$ | async) ?? ''"></app-documentation-header>
-    <div class="p-8 flex-1">
-      <router-outlet></router-outlet>
-    </div>
-    <footer class="p-8 border-t border-navy-800 text-center transition-colors duration-300">
-      <p class="text-xs text-slate-600">
-        © 2024 MyKyntus — Plateforme RH entreprise. Tous droits réservés.
-      </p>
-    </footer>
-  </main>
+    <app-documentation-sidebar [stackBelowDevBanner]="devBannerEnabled"></app-documentation-sidebar>
+    <main
+      class="flex-1 transition-all duration-300 min-h-screen flex flex-col min-w-0 w-full"
+      [ngClass]="(nav.sidebarCollapsed$ | async) ? 'ml-[70px]' : 'ml-64'"
+    >
+      <app-documentation-header [title]="(title$ | async) ?? ''"></app-documentation-header>
+      <div class="p-8 flex-1 min-w-0">
+        <router-outlet></router-outlet>
+      </div>
+      <footer class="p-8 border-t border-navy-800 text-center transition-colors duration-300">
+        <p class="text-xs text-slate-600">
+          © 2024 MyKyntus — Plateforme RH entreprise. Tous droits réservés.
+        </p>
+      </footer>
+    </main>
   </div>
 </div>

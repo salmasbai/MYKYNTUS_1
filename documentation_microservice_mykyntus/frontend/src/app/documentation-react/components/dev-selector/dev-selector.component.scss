@@ -1,0 +1,78 @@
+.dev-filter-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 60px;
+  box-sizing: border-box;
+
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 12px;
+
+  padding: 0 20px;
+
+  background: #0b1a2b;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+
+  z-index: 1000;
+
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+
+  color: rgba(226, 232, 240, 0.95);
+  font-size: 0.8125rem;
+  line-height: 1.25;
+
+  select {
+    min-width: 140px;
+    max-width: min(22rem, 40vw);
+    background: #0f2744;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 0.375rem;
+    padding: 0.25rem 0.5rem;
+    color: #f8fafc;
+  }
+
+  label {
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .dev-filter-bar__title {
+    flex: 0 0 auto;
+    font-weight: 600;
+    color: #fde68a;
+    letter-spacing: 0.02em;
+  }
+
+  .dev-filter-bar__hint {
+    flex: 0 0 auto;
+    max-width: 28rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: rgba(226, 232, 240, 0.85);
+  }
+
+  .dev-filter-bar__error {
+    flex: 0 0 auto;
+    font-size: 11px;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.375rem;
+    border: 1px solid rgba(244, 63, 94, 0.35);
+    background: rgba(76, 5, 25, 0.45);
+    color: #fecdd3;
+  }
+
+  code {
+    font-size: 10px;
+    opacity: 0.85;
+  }
+}

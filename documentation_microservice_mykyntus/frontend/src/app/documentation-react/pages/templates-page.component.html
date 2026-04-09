@@ -1,26 +1,22 @@
 <div class="space-y-6">
+  @if (lastMessage) {
+    <p class="text-sm text-emerald-400/95 border border-emerald-500/30 rounded-lg px-3 py-2 bg-emerald-950/40">{{ lastMessage }}</p>
+  }
   @if (loading) {
-    <p class="text-slate-400 text-sm">Chargement des types catalogue…</p>
+    <p class="text-slate-400 text-sm">Chargement des modèles…</p>
   } @else if (error) {
     <p class="text-red-400 text-sm">{{ error }}</p>
   }
-  <div class="flex items-center justify-between">
+  <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
     <div>
-      <h3 class="text-xl font-bold text-white">Document Templates</h3>
-      <p class="text-sm text-slate-500">Create and manage dynamic document templates with variables</p>
+      <h3 class="text-xl font-bold text-white">Modèles documentaires</h3>
+      <p class="text-sm text-slate-500">Données issues de PostgreSQL (document_templates + types liés)</p>
     </div>
-    <button
-      type="button"
-      class="flex items-center gap-2 px-4 py-2 bg-blue-600 rounded-lg text-sm font-semibold text-white hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20"
-    >
-      <app-doc-icon name="plus-circle" klass="w-4 h-4"></app-doc-icon>
-      New Template
-    </button>
   </div>
 
   <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
     @if (!loading && !error && templates.length === 0) {
-      <p class="text-slate-500 text-sm md:col-span-2 xl:col-span-3">Aucun type de document dans le catalogue.</p>
+      <p class="text-slate-500 text-sm md:col-span-2 xl:col-span-3">Aucun modèle en base.</p>
     }
     @for (template of templates; track template.id) {
       <div class="card-navy p-6 flex flex-col group hover:border-blue-500/50 transition-all">
@@ -30,23 +26,24 @@
           >
             <app-doc-icon name="documents" klass="w-6 h-6 text-slate-400 group-hover:text-blue-500"></app-doc-icon>
           </div>
-          <button type="button" class="p-2 text-slate-500 hover:text-white transition-colors">
-            <app-doc-icon name="more-vertical" klass="w-4 h-4"></app-doc-icon>
-          </button>
         </div>
 
         <h4 class="text-lg font-bold text-white mb-1">{{ template.name }}</h4>
-        @if (template.lastModified) {
-          <p class="text-xs text-slate-500 mb-6">Dernière modification : {{ template.lastModified }}</p>
+        <p class="text-xs text-slate-500 mb-1 font-mono">{{ template.code }}</p>
+        @if (template.documentTypeName) {
+          <p class="text-xs text-slate-400 mb-4">Type : {{ template.documentTypeName }}</p>
+        } @else {
+          <p class="text-xs text-slate-600 mb-4">Type catalogue : —</p>
         }
+        <p class="text-xs text-slate-500 mb-4">Mise à jour : {{ template.updatedAt | slice : 0 : 19 }}</p>
 
         <div class="space-y-3 flex-1">
           <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Variables</p>
-          @if (template.variables.length === 0) {
-            <p class="text-xs text-slate-600">Aucune variable exposée par l’API pour ce type.</p>
+          @if (template.variableNames.length === 0) {
+            <p class="text-xs text-slate-600">Aucune variable.</p>
           } @else {
             <div class="flex flex-wrap gap-2">
-              @for (v of template.variables; track v) {
+              @for (v of template.variableNames; track v) {
                 <span class="px-2 py-1 bg-navy-800 text-blue-400 text-[10px] font-mono rounded border border-navy-700">
                   {{ '{{' + v + '}}' }}
                 </span>
@@ -55,30 +52,22 @@
           }
         </div>
 
-        <div class="mt-8 pt-4 border-t border-navy-800 flex items-center justify-between">
-          <button type="button" class="text-sm font-semibold text-slate-400 hover:text-white transition-colors">
-            Preview
-          </button>
+        <div class="mt-8 pt-4 border-t border-navy-800 flex items-center justify-end">
           <button
             type="button"
-            class="flex items-center gap-2 text-sm font-semibold text-blue-500 hover:text-blue-400 transition-colors"
+            (click)="generate(template)"
+            [disabled]="generatingId === template.id"
+            class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-50 transition-colors"
           >
-            <app-doc-icon name="edit" klass="w-4 h-4"></app-doc-icon>
-            Edit Template
+            @if (generatingId === template.id) {
+              <span>Génération…</span>
+            } @else {
+              <app-doc-icon name="documents" klass="w-4 h-4"></app-doc-icon>
+              <span>Générer (PDF)</span>
+            }
           </button>
         </div>
       </div>
     }
-
-    <button
-      type="button"
-      class="card-navy p-6 border-dashed border-2 border-navy-800 flex flex-col items-center justify-center text-slate-500 hover:text-blue-500 hover:border-blue-500/50 hover:bg-blue-500/5 transition-all min-h-[280px]"
-    >
-      <div class="w-12 h-12 rounded-full border-2 border-current flex items-center justify-center mb-4">
-        <app-doc-icon name="plus-circle" klass="w-6 h-6"></app-doc-icon>
-      </div>
-      <p class="font-bold">Create New Template</p>
-      <p class="text-xs mt-1">Start from scratch or import file</p>
-    </button>
   </div>
 </div>

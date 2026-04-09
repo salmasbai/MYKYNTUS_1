@@ -61,10 +61,6 @@ public sealed class DocumentationUserContext
 
             Role = roleFromHeader;
         }
-        else if (UserId.HasValue && environment.IsDevelopment() && DemoActors.TryGetRole(UserId.Value, out var roleFromDemo))
-        {
-            Role = roleFromDemo;
-        }
 
         var tenantRaw = FirstHeader(headers, DocumentationInboundHeaders.TenantId, DocumentationInboundHeaders.LegacyTenantId);
         if (string.IsNullOrWhiteSpace(tenantRaw))

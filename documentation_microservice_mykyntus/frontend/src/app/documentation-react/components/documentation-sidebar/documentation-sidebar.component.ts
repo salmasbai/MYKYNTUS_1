@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, Input, OnDestroy, OnInit } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
@@ -37,6 +37,9 @@ export interface AuditSidebarNavItem {
   styleUrl: './documentation-sidebar.component.scss',
 })
 export class DocumentationSidebarComponent implements OnInit, OnDestroy {
+  /** Bandeau dev fixed en tête : décale la sidebar sous le ruban (pleine largeur écran). */
+  @Input() stackBelowDevBanner = false;
+
   /** Aligné sur le service : !collapsed ⇔ sidebar « ouverte » (large) */
   readonly collapsed = toSignal(this.nav.sidebarCollapsed$, { initialValue: false });
   readonly role = toSignal(this.nav.role$, { initialValue: 'Pilote' as DocumentationRole });
