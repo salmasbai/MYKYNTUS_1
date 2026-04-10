@@ -10,13 +10,18 @@ export interface DocumentationDocument {
 }
 
 export interface DocumentationRequest {
+  /** Numéro affiché (ex. REQ-2026-000001). */
   id: string;
+  /** UUID pour les appels workflow (approve / reject). */
+  internalId: string;
   type: string;
   requestDate: string;
   status: 'Pending' | 'Approved' | 'Rejected' | 'Generated' | 'Cancelled';
   employeeName: string;
   employeeId?: string;
   reason?: string;
+  /** Actions renvoyées par l’API selon le rôle (ex. approve, reject). */
+  allowedActions: string[];
 }
 
 export interface DocumentationTemplate {

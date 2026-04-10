@@ -1,15 +1,29 @@
 import type { AuditLogDto, DocumentRequestDto, DocumentTypeDto } from '../../shared/models/api.models';
 import type { DocumentationDocument, DocumentationRequest, DocumentationTemplate } from '../interfaces/documentation-entities';
 
+function normalizeRequestStatus(raw: string): DocumentationRequest['status'] {
+  const key = raw.trim().toLowerCase();
+  const map: Record<string, DocumentationRequest['status']> = {
+    pending: 'Pending',
+    approved: 'Approved',
+    rejected: 'Rejected',
+    generated: 'Generated',
+    cancelled: 'Cancelled',
+  };
+  return map[key] ?? (raw as DocumentationRequest['status']);
+}
+
 export function mapDocumentRequestDto(d: DocumentRequestDto): DocumentationRequest {
   return {
     id: d.id,
+    internalId: d.internalId,
     type: d.type,
     requestDate: d.requestDate,
-    status: d.status as DocumentationRequest['status'],
+    status: normalizeRequestStatus(d.status),
     employeeName: d.employeeName,
     employeeId: d.employeeId ?? undefined,
     reason: d.reason ?? undefined,
+    allowedActions: d.allowedActions ?? [],
   };
 }
 
