@@ -9,6 +9,7 @@
         <button
           type="button"
           class="flex items-center gap-2 px-4 py-2 bg-navy-900 border border-navy-800 rounded-lg text-sm text-slate-300 hover:bg-navy-800 transition-all"
+          (click)="onAdvancedFilter()"
         >
           <app-doc-icon name="filter" klass="w-4 h-4"></app-doc-icon>
           Advanced Filter
@@ -16,6 +17,7 @@
         <button
           type="button"
           class="flex items-center gap-2 px-4 py-2 bg-blue-600 rounded-lg text-sm font-semibold text-white hover:bg-blue-500 transition-all"
+          (click)="goUploadTemplates()"
         >
           <app-doc-icon name="file-up" klass="w-4 h-4"></app-doc-icon>
           Upload Document
@@ -27,45 +29,6 @@
       <p class="text-slate-400 text-sm">Chargement de la file…</p>
     } @else if (error) {
       <p class="text-red-400 text-sm">{{ error }}</p>
-    }
-
-    @if (rejectTargetInternalId) {
-      <div
-        class="card-navy p-4 border border-red-500/30 rounded-xl space-y-3"
-        role="dialog"
-        aria-label="Motif de rejet"
-      >
-        <p class="text-sm font-semibold text-slate-200">
-          Rejet — <span class="text-red-300">{{ rejectEmployeeLabel }}</span>
-        </p>
-        <label class="block text-xs text-slate-500" for="hr-reject-reason">Motif obligatoire</label>
-        <textarea
-          id="hr-reject-reason"
-          name="hrRejectReason"
-          rows="3"
-          class="w-full rounded-lg bg-navy-900 border border-navy-700 text-slate-200 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-500/40"
-          [(ngModel)]="rejectReason"
-          placeholder="Ex. Pièce d’identité illisible, dossier incomplet…"
-        ></textarea>
-        <div class="flex flex-wrap gap-2 justify-end">
-          <button
-            type="button"
-            class="px-4 py-2 rounded-lg text-sm text-slate-300 border border-navy-700 hover:bg-navy-800"
-            [disabled]="!!actionBusyInternalId"
-            (click)="cancelReject()"
-          >
-            Annuler
-          </button>
-          <button
-            type="button"
-            class="px-4 py-2 rounded-lg text-sm font-semibold bg-red-600 text-white hover:bg-red-500 disabled:opacity-50"
-            [disabled]="!rejectReason.trim() || !!actionBusyInternalId"
-            (click)="confirmReject()"
-          >
-            Confirmer le rejet
-          </button>
-        </div>
-      </div>
     }
 
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -129,42 +92,94 @@
                 <app-status-badge [status]="req.status"></app-status-badge>
               </td>
               <td class="px-6 py-4 text-right">
-                <div class="flex items-center justify-end gap-2">
-                  @if (showRhWorkflowActions(req, role)) {
+                <div class="flex flex-col items-end gap-2">
+                  <div class="flex items-center justify-end gap-2 flex-wrap">
+                    @if (allowed(req, 'validate')) {
+                      <button
+                        type="button"
+                        class="p-2 text-sky-500 hover:bg-sky-500/10 rounded-lg transition-all disabled:opacity-40"
+                        title="Valider"
+                        [disabled]="busyWorkflowId === req.internalId"
+                        (click)="validateRequest(req)"
+                      >
+                        <app-doc-icon name="shield-check" klass="w-4 h-4"></app-doc-icon>
+                      </button>
+                    }
+                    @if (allowed(req, 'approve')) {
+                      <button
+                        type="button"
+                        class="p-2 text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition-all disabled:opacity-40"
+                        title="Approve"
+                        [disabled]="busyWorkflowId === req.internalId"
+                        (click)="approveRequest(req)"
+                      >
+                        <app-doc-icon name="check-circle-2" klass="w-4 h-4"></app-doc-icon>
+                      </button>
+                    }
+                    @if (allowed(req, 'reject')) {
+                      <button
+                        type="button"
+                        class="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-all disabled:opacity-40"
+                        title="Reject"
+                        [disabled]="busyWorkflowId === req.internalId"
+                        (click)="startReject(req)"
+                      >
+                        <app-doc-icon name="x-circle" klass="w-4 h-4"></app-doc-icon>
+                      </button>
+                    }
+                    @if (canGenerate(role, req)) {
+                      <button
+                        type="button"
+                        class="flex items-center gap-2 px-3 py-1.5 bg-blue-600/10 text-blue-500 border border-blue-500/20 rounded-lg text-xs font-bold hover:bg-blue-600 hover:text-white transition-all disabled:opacity-40"
+                        [disabled]="busyGenerateId === req.internalId"
+                        (click)="generateDocument(req)"
+                      >
+                        <app-doc-icon name="file-edit" klass="w-3 h-3"></app-doc-icon>
+                        Generate
+                      </button>
+                    }
                     <button
                       type="button"
-                      class="p-2 text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition-all disabled:opacity-40"
-                      title="Approuver"
-                      [disabled]="rowBusy(req)"
-                      (click)="onApprove(req)"
+                      class="p-2 text-slate-500 hover:text-white hover:bg-navy-700 rounded-lg transition-all"
+                      title="Suivi des demandes"
+                      (click)="openRequestTracking()"
                     >
-                      <app-doc-icon name="check-circle-2" klass="w-4 h-4"></app-doc-icon>
+                      <app-doc-icon name="more-vertical" klass="w-4 h-4"></app-doc-icon>
                     </button>
-                    <button
-                      type="button"
-                      class="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-all disabled:opacity-40"
-                      title="Rejeter"
-                      [disabled]="rowBusy(req) || rejectTargetInternalId === req.internalId"
-                      (click)="onRejectClick(req)"
-                    >
-                      <app-doc-icon name="x-circle" klass="w-4 h-4"></app-doc-icon>
-                    </button>
+                  </div>
+                  @if (rejectingFor?.internalId === req.internalId) {
+                    <div class="w-full max-w-xs text-left rounded-lg border border-navy-700 bg-navy-900/80 p-3 space-y-2">
+                      <label class="text-[11px] text-slate-400" for="rej-reason-{{ req.internalId }}"
+                        >Motif de rejet</label
+                      >
+                      <textarea
+                        id="rej-reason-{{ req.internalId }}"
+                        name="rejectReason"
+                        rows="2"
+                        class="w-full text-xs bg-navy-950 border border-navy-800 rounded p-2 text-slate-200"
+                        [(ngModel)]="rejectReason"
+                        placeholder="Obligatoire"
+                      ></textarea>
+                      <div class="flex gap-2 justify-end">
+                        <button
+                          type="button"
+                          class="text-xs px-2 py-1 rounded border border-navy-700 text-slate-300 hover:bg-navy-800"
+                          [disabled]="busyWorkflowId === req.internalId"
+                          (click)="cancelReject()"
+                        >
+                          Annuler
+                        </button>
+                        <button
+                          type="button"
+                          class="text-xs px-2 py-1 rounded bg-red-600 text-white disabled:opacity-40"
+                          [disabled]="busyWorkflowId === req.internalId || !rejectReason.trim()"
+                          (click)="confirmReject()"
+                        >
+                          Confirmer le rejet
+                        </button>
+                      </div>
+                    </div>
                   }
-                  @if (req.status === 'Approved' && canGenerate(role)) {
-                    <button
-                      type="button"
-                      class="flex items-center gap-2 px-3 py-1.5 bg-blue-600/10 text-blue-500 border border-blue-500/20 rounded-lg text-xs font-bold hover:bg-blue-600 hover:text-white transition-all"
-                    >
-                      <app-doc-icon name="file-edit" klass="w-3 h-3"></app-doc-icon>
-                      Generate
-                    </button>
-                  }
-                  <button
-                    type="button"
-                    class="p-2 text-slate-500 hover:text-white hover:bg-navy-700 rounded-lg transition-all"
-                  >
-                    <app-doc-icon name="more-vertical" klass="w-4 h-4"></app-doc-icon>
-                  </button>
                 </div>
               </td>
             </tr>

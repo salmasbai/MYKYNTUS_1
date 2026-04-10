@@ -6,3 +6,11 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# .NET
+**/bin/
+**/obj/
+
+# Angular cache
+.angular/
+**/.angular/

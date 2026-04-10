@@ -7,6 +7,7 @@ import { finalize } from 'rxjs/operators';
 import type { CreateDocumentRequestPayload, DocumentTypeDto } from '../../shared/models/api.models';
 import { DocIconComponent } from '../components/doc-icon/doc-icon.component';
 import { DocumentationApiService } from '../services/documentation-api.service';
+import { DocumentationIdentityService } from '../../core/services/documentation-identity.service';
 
 /** Valeur sentinelle pour « Autre » (distincte des UUID du catalogue). */
 const OTHER_KEY = '__autre__';
@@ -36,8 +37,16 @@ export class RequestDocumentPageComponent implements OnInit {
   submitting = false;
   submitError: string | null = null;
   submitSuccess = false;
+  /** Numéro métier affiché côté API (<code>id</code> du DTO = REQ-YYYY-… ou repli UUID). */
+  submitSuccessRef: string | null = null;
+  /** Clé primaire en base (<code>internalId</code> du DTO = colonne <code>id</code>). */
+  submitSuccessInternalId: string | null = null;
+  submitSuccessTenant: string | null = null;
 
-  constructor(private readonly api: DocumentationApiService) {}
+  constructor(
+    private readonly api: DocumentationApiService,
+    private readonly identity: DocumentationIdentityService,
+  ) {}
 
   ngOnInit(): void {
     this.docTypesLoading = true;
@@ -61,11 +70,19 @@ export class RequestDocumentPageComponent implements OnInit {
   }
 
   handleSubmit(ev: Event): void {
+    console.log('CLICK DETECTED');
     ev.preventDefault();
     this.submitError = null;
     this.submitSuccess = false;
+    this.submitSuccessRef = null;
+    this.submitSuccessInternalId = null;
+    this.submitSuccessTenant = null;
 
     if (this.docTypesLoading || this.submitting) {
+      console.log('[handleSubmit] sortie anticipée : chargement types ou envoi déjà en cours', {
+        docTypesLoading: this.docTypesLoading,
+        submitting: this.submitting,
+      });
       return;
     }
 
@@ -74,6 +91,7 @@ export class RequestDocumentPageComponent implements OnInit {
       const trimmed = this.otherDescription.trim();
       if (!trimmed) {
         this.otherDescriptionError = true;
+        console.log('[handleSubmit] sortie anticipée : type « Autre » sans description');
         return;
       }
       this.otherDescriptionError = false;
@@ -88,12 +106,23 @@ export class RequestDocumentPageComponent implements OnInit {
     };
 
     this.submitting = true;
+    console.log('[handleSubmit] appel api.createDocumentRequest', payload);
     this.api
       .createDocumentRequest(payload)
       .pipe(finalize(() => (this.submitting = false)))
       .subscribe({
-        next: () => {
+        next: (created) => {
+          console.log('[subscribe:next] DocumentRequestDto reçu du backend', created);
+          console.log('[Pilote] réponse serveur après création demande', {
+            tenantId: this.identity.getTenantId(),
+            requestNumberOrDisplayId: created.id,
+            internalId: created.internalId,
+            status: created.status,
+          });
           this.submitSuccess = true;
+          this.submitSuccessRef = created.id;
+          this.submitSuccessInternalId = created.internalId;
+          this.submitSuccessTenant = this.identity.getTenantId() || null;
           this.reason = '';
           this.complementaryComments = '';
           this.otherDescription = '';
@@ -108,6 +137,7 @@ export class RequestDocumentPageComponent implements OnInit {
           }, 4000);
         },
         error: (err: unknown) => {
+          console.error('[subscribe:error]', err);
           this.submitError = this.formatHttpError(err);
         },
       });

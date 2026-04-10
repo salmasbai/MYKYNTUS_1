@@ -12,7 +12,7 @@ internal static class WorkflowActionPolicy
 
         return role switch
         {
-            AppRole.Rh => new[] { "approve", "reject" },
+            AppRole.Rh or AppRole.Admin => new[] { "approve", "reject" },
             AppRole.Coach or AppRole.Manager or AppRole.Rp => new[] { "validate" },
             _ => Array.Empty<string>(),
         };
@@ -21,5 +21,5 @@ internal static class WorkflowActionPolicy
     internal static bool CanValidate(AppRole role) =>
         role is AppRole.Coach or AppRole.Manager or AppRole.Rp;
 
-    internal static bool CanApproveOrReject(AppRole role) => role == AppRole.Rh;
+    internal static bool CanApproveOrReject(AppRole role) => role is AppRole.Rh or AppRole.Admin;
 }

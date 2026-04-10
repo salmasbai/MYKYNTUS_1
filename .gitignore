@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+
+# .NET / MSBuild
+**/bin/
+**/obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vs/
+
+# Angular
+.angular/
+**/.angular/
+
+# Build outputs
+dist/
+build/
+out/
+
+# Logs & local debug
+*.log
+logs/
+**/debug-*.ndjson
+
+# Test / coverage
+coverage/
+*.trx
+TestResults/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+
+# Environment (keep .env.example if needed)
+.env
+.env.local
+.env.*.local
+
+# Caches
+*.cache
+.turbo/

@@ -3,13 +3,16 @@ using DocumentationBackend.Data;
 using DocumentationBackend.Data.Entities;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace DocumentationBackend.Controllers;
 
 /// <summary>Administration DMS — persistance PostgreSQL (schéma documentation). Remplace l’ancien store mémoire.</summary>
 [ApiController]
 [Route("api/documentation")]
-public sealed class DocumentationAdminController(DocumentationDbContext db) : ControllerBase
+public sealed class DocumentationAdminController(
+    DocumentationDbContext db,
+    ILogger<DocumentationAdminController> logger) : ControllerBase
 {
     [HttpGet("general-config")]
     public async Task<ActionResult<AdminGeneralConfigDto>> GetGeneralConfig(CancellationToken ct)
@@ -77,6 +80,7 @@ public sealed class DocumentationAdminController(DocumentationDbContext db) : Co
             return Conflict(new { message = "Code déjà utilisé ou contrainte refusée." });
         }
 
+        logger.LogInformation("Admin CreateDocType id={Id} code={Code}", entity.Id, entity.Code);
         return Ok(MapDocType(entity));
     }
 
@@ -108,6 +112,7 @@ public sealed class DocumentationAdminController(DocumentationDbContext db) : Co
             return Conflict(new { message = "Contrainte refusée." });
         }
 
+        logger.LogInformation("Admin UpdateDocType id={Id}", id);
         return Ok(MapDocType(entity));
     }
 
@@ -127,6 +132,7 @@ public sealed class DocumentationAdminController(DocumentationDbContext db) : Co
             return Conflict(new { message = "Impossible de supprimer : références existantes." });
         }
 
+        logger.LogInformation("Admin DeleteDocType id={Id}", id);
         return Ok(true);
     }
 
@@ -201,6 +207,7 @@ public sealed class DocumentationAdminController(DocumentationDbContext db) : Co
             .Include(w => w.Steps)
             .ThenInclude(s => s.Actions)
             .FirstAsync(w => w.Id == id, ct);
+        logger.LogInformation("Admin UpdateWorkflowDefinition id={Id}", id);
         return Ok(MapWorkflow(reloaded));
     }
 

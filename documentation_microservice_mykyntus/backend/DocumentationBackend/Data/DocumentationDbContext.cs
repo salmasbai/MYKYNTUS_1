@@ -50,6 +50,7 @@ public class DocumentationDbContext : DbContext
     public DbSet<DocumentRequest> DocumentRequests => Set<DocumentRequest>();
     public DbSet<GeneratedDocument> GeneratedDocuments => Set<GeneratedDocument>();
     public DbSet<DocumentTemplate> DocumentTemplates => Set<DocumentTemplate>();
+    public DbSet<DocumentTemplateVersion> DocumentTemplateVersions => Set<DocumentTemplateVersion>();
     public DbSet<DocumentTemplateVariable> DocumentTemplateVariables => Set<DocumentTemplateVariable>();
     public DbSet<PermissionPolicy> PermissionPolicies => Set<PermissionPolicy>();
     public DbSet<DmsGeneralConfiguration> DmsGeneralConfigurations => Set<DmsGeneralConfiguration>();
@@ -74,6 +75,18 @@ public class DocumentationDbContext : DbContext
                 entry.Entity.TenantId = tenantId;
         }
 
+        foreach (var entry in ChangeTracker.Entries<DocumentTemplate>())
+        {
+            if (entry.State == EntityState.Added && string.IsNullOrEmpty(entry.Entity.TenantId))
+                entry.Entity.TenantId = tenantId;
+        }
+
+        foreach (var entry in ChangeTracker.Entries<DocumentTemplateVersion>())
+        {
+            if (entry.State == EntityState.Added && string.IsNullOrEmpty(entry.Entity.TenantId))
+                entry.Entity.TenantId = tenantId;
+        }
+
         return await base.SaveChangesAsync(cancellationToken);
     }
 
@@ -92,6 +105,8 @@ public class DocumentationDbContext : DbContext
         modelBuilder.Entity<AuditLog>().HasQueryFilter(a => a.TenantId == CurrentTenantIdForFilter);
         modelBuilder.Entity<DirectoryUser>().HasQueryFilter(u => u.TenantId == CurrentTenantIdForFilter);
         modelBuilder.Entity<OrganisationUnit>().HasQueryFilter(ou => ou.TenantId == CurrentTenantIdForFilter);
+        modelBuilder.Entity<DocumentTemplate>().HasQueryFilter(t => t.TenantId == CurrentTenantIdForFilter);
+        modelBuilder.Entity<DocumentTemplateVersion>().HasQueryFilter(v => v.TenantId == CurrentTenantIdForFilter);
 
         modelBuilder.Entity<Workflow>(e =>
         {
@@ -172,29 +187,65 @@ public class DocumentationDbContext : DbContext
                 .WithMany(t => t.GeneratedDocuments)
                 .HasForeignKey(x => x.DocumentTypeId)
                 .OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(x => x.TemplateVersion)
+                .WithMany(v => v.GeneratedDocuments)
+                .HasForeignKey(x => x.TemplateVersionId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<DocumentTemplate>(e =>
         {
             e.ToTable("document_templates");
-            e.HasIndex(x => x.Code).IsUnique();
+            e.Property(x => x.TenantId).HasMaxLength(64).IsRequired();
+            e.HasIndex(x => new { x.TenantId, x.Code }).IsUnique();
             e.Property(x => x.Code).HasMaxLength(64);
             e.Property(x => x.Name).HasMaxLength(255);
+            e.Property(x => x.Source).HasMaxLength(16);
+            e.HasIndex(x => x.TenantId);
             e.HasOne(x => x.DocumentType)
                 .WithMany(t => t.DocumentTemplates)
                 .HasForeignKey(x => x.DocumentTypeId)
                 .OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(x => x.CurrentVersion)
+                .WithMany()
+                .HasForeignKey(x => x.CurrentVersionId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<DocumentTemplateVersion>(e =>
+        {
+            e.ToTable("document_template_versions");
+            e.Property(x => x.TenantId).HasMaxLength(64).IsRequired();
+            e.Property(x => x.Status).HasMaxLength(16).IsRequired();
+            e.Property(x => x.StructuredContent).HasColumnType("jsonb");
+            e.Property(x => x.OriginalAssetUri).HasColumnType("text");
+            e.HasIndex(x => x.TenantId);
+            e.HasIndex(x => new { x.TemplateId, x.VersionNumber }).IsUnique();
+            e.HasOne(x => x.Template)
+                .WithMany(t => t.Versions)
+                .HasForeignKey(x => x.TemplateId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<DocumentTemplateVariable>(e =>
         {
             e.ToTable("document_template_variables");
             e.Property(x => x.VariableName).HasMaxLength(128);
+            e.Property(x => x.VariableType).HasMaxLength(16).IsRequired();
+            e.Property(x => x.DefaultValue).HasColumnType("text");
+            e.Property(x => x.ValidationRule).HasColumnType("text");
             e.HasOne(x => x.Template)
                 .WithMany(t => t.Variables)
                 .HasForeignKey(x => x.TemplateId)
                 .OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(x => x.TemplateId);
+            e.HasOne(x => x.TemplateVersion)
+                .WithMany(v => v.Variables)
+                .HasForeignKey(x => x.TemplateVersionId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => new { x.TemplateVersionId, x.VariableName })
+                .IsUnique()
+                .HasFilter("template_version_id IS NOT NULL");
         });
 
         modelBuilder.Entity<PermissionPolicy>(e =>

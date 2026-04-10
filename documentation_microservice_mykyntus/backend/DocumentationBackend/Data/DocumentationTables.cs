@@ -101,6 +101,7 @@ public class GeneratedDocument
     public Guid? DocumentRequestId { get; set; }
     public Guid OwnerUserId { get; set; }
     public Guid? DocumentTypeId { get; set; }
+    public Guid? TemplateVersionId { get; set; }
     public string FileName { get; set; } = "";
     public string StorageUri { get; set; } = "";
     public string? MimeType { get; set; }
@@ -113,29 +114,60 @@ public class GeneratedDocument
 
     public DocumentRequest? DocumentRequest { get; set; }
     public DocumentType? DocumentType { get; set; }
+    public DocumentTemplateVersion? TemplateVersion { get; set; }
 }
 
 public class DocumentTemplate
 {
     public Guid Id { get; set; }
+    public string TenantId { get; set; } = "";
     public string Code { get; set; } = "";
     public string Name { get; set; } = "";
+    public string Source { get; set; } = "UPLOAD";
+    public bool IsActive { get; set; } = true;
+    public Guid? CurrentVersionId { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
 
     public Guid? DocumentTypeId { get; set; }
     public DocumentType? DocumentType { get; set; }
+    public DocumentTemplateVersion? CurrentVersion { get; set; }
 
     public ICollection<DocumentTemplateVariable> Variables { get; set; } = new List<DocumentTemplateVariable>();
+    public ICollection<DocumentTemplateVersion> Versions { get; set; } = new List<DocumentTemplateVersion>();
+}
+
+public class DocumentTemplateVersion
+{
+    public Guid Id { get; set; }
+    public Guid TemplateId { get; set; }
+    public string TenantId { get; set; } = "";
+    public int VersionNumber { get; set; }
+    public string Status { get; set; } = "draft";
+    public string StructuredContent { get; set; } = "";
+    public string? OriginalAssetUri { get; set; }
+    public Guid? CreatedByUserId { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset? PublishedAt { get; set; }
+
+    public DocumentTemplate Template { get; set; } = null!;
+    public ICollection<DocumentTemplateVariable> Variables { get; set; } = new List<DocumentTemplateVariable>();
+    public ICollection<GeneratedDocument> GeneratedDocuments { get; set; } = new List<GeneratedDocument>();
 }
 
 public class DocumentTemplateVariable
 {
     public Guid Id { get; set; }
     public Guid TemplateId { get; set; }
+    public Guid? TemplateVersionId { get; set; }
     public string VariableName { get; set; } = "";
+    public string VariableType { get; set; } = "text";
+    public bool IsRequired { get; set; } = true;
+    public string? DefaultValue { get; set; }
+    public string? ValidationRule { get; set; }
     public int SortOrder { get; set; }
 
     public DocumentTemplate Template { get; set; } = null!;
+    public DocumentTemplateVersion? TemplateVersion { get; set; }
 }
 
 public class PermissionPolicy

@@ -35,6 +35,8 @@ builder.Services.AddScoped<DocumentationCorrelationContext>();
 builder.Services.AddScoped<DocumentationUserContext>();
 builder.Services.AddScoped<IDocumentationTenantAccessor, DocumentationTenantAccessor>();
 builder.Services.AddScoped<DocumentationWorkflowService>();
+builder.Services.AddSingleton<ITemplateEngineService, TemplateEngineService>();
+builder.Services.AddSingleton<IPdfExportService, PdfExportService>();
 
 var documentationCs = builder.Configuration.GetConnectionString("Documentation")
     ?? throw new InvalidOperationException("ConnectionStrings:Documentation manquante (voir appsettings).");
@@ -124,11 +126,26 @@ app.MapGet("/api/documentation/db/status", async (
         try
         {
             var documentTypeCount = await db.DocumentTypes.CountAsync(ct);
+            var documentRequestCount = await db.DocumentRequests.CountAsync(ct);
+            await using var cmd = connection.CreateCommand();
+            cmd.CommandText = "SELECT current_database()";
+            var serverDbName = (await cmd.ExecuteScalarAsync(ct))?.ToString() ?? "";
+            cmd.CommandText = "SELECT count(*)::bigint FROM documentation.document_requests";
+            var documentRequestTotalAllTenants = Convert.ToInt64(await cmd.ExecuteScalarAsync(ct) ?? 0L);
             return Results.Ok(new
             {
                 connected = true,
                 schema = "documentation",
+                serverDatabase = serverDbName,
+                configuredHost = csb.Host,
+                configuredPort = csb.Port,
+                configuredDatabase = csb.Database,
                 documentTypeCount,
+                documentRequestCount,
+                documentRequestTotalAllTenants,
+                hint =
+                    "Comparer serverDatabase / host / port avec la connexion pgAdmin. " +
+                    "documentRequestCount suit le filtre tenant courant ; documentRequestTotalAllTenants compte toutes les lignes.",
             });
         }
         finally

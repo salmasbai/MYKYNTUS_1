@@ -6,6 +6,7 @@ import { environment } from '../../../environments/environment';
 import type {
   AuditLogDto,
   CreateDocumentRequestPayload,
+  DocumentTemplateDetailDto,
   DbStatusDto,
   DirectoryUserDto,
   DocumentRequestDto,
@@ -13,6 +14,7 @@ import type {
   DocumentTypeDto,
   OrganizationalUnitSummaryDto,
   PagedResponse,
+  TemplateVersionDto,
 } from '../../shared/models/api.models';
 
 export interface DocumentRequestsQuery {
@@ -159,7 +161,10 @@ export class DocumentationDataApiService {
   }
 
   createDocumentRequest(body: CreateDocumentRequestPayload): Observable<DocumentRequestDto> {
-    return this.http.post<DocumentRequestDto>(`${this.dataRoot}/document-requests`, body);
+    const url = `${this.dataRoot}/document-requests`;
+    console.log('SERVICE CALLED', 'DocumentationDataApiService.createDocumentRequest — HttpClient.post');
+    console.log('[HTTP] POST', url, body);
+    return this.http.post<DocumentRequestDto>(url, body);
   }
 
   getAuditLogs(page = 1, pageSize = 50, query: AuditLogsQuery = {}): Observable<PagedResponse<AuditLogDto>> {
@@ -179,14 +184,40 @@ export class DocumentationDataApiService {
     return this.http.get<PagedResponse<AuditLogDto>>(`${this.dataRoot}/audit-logs`, { params });
   }
 
+  /** PUT REST — préféré (aligné contrat métier). */
+  putValidateDocumentRequest(internalId: string, comment?: string | null): Observable<DocumentRequestDto> {
+    const body = comment != null && String(comment).trim() !== '' ? { comment: String(comment).trim() } : {};
+    return this.http.put<DocumentRequestDto>(
+      `${this.dataRoot}/document-requests/${encodeURIComponent(internalId)}/validate`,
+      body,
+    );
+  }
+
+  putApproveDocumentRequest(internalId: string): Observable<DocumentRequestDto> {
+    return this.http.put<DocumentRequestDto>(
+      `${this.dataRoot}/document-requests/${encodeURIComponent(internalId)}/approve`,
+      {},
+    );
+  }
+
+  putRejectDocumentRequest(internalId: string, rejectionReason: string): Observable<DocumentRequestDto> {
+    return this.http.put<DocumentRequestDto>(
+      `${this.dataRoot}/document-requests/${encodeURIComponent(internalId)}/reject`,
+      { rejectionReason },
+    );
+  }
+
+  /** @deprecated Utiliser {@link putValidateDocumentRequest} — conservé pour compatibilité. */
   workflowValidate(body: { documentRequestId: string; comment?: string | null }): Observable<DocumentRequestDto> {
     return this.http.post<DocumentRequestDto>(`${this.dataRoot}/workflow/validate`, body);
   }
 
+  /** @deprecated Utiliser {@link putApproveDocumentRequest}. */
   workflowApprove(body: { documentRequestId: string }): Observable<DocumentRequestDto> {
     return this.http.post<DocumentRequestDto>(`${this.dataRoot}/workflow/approve`, body);
   }
 
+  /** @deprecated Utiliser {@link putRejectDocumentRequest}. */
   workflowReject(body: { documentRequestId: string; rejectionReason: string }): Observable<DocumentRequestDto> {
     return this.http.post<DocumentRequestDto>(`${this.dataRoot}/workflow/reject`, body);
   }
@@ -195,9 +226,82 @@ export class DocumentationDataApiService {
     return this.http.get<DocumentTemplateListItemDto[]>(`${this.dataRoot}/document-templates`);
   }
 
+  getDocumentTemplate(templateId: string): Observable<DocumentTemplateDetailDto> {
+    return this.http.get<DocumentTemplateDetailDto>(`${this.dataRoot}/document-templates/${encodeURIComponent(templateId)}`);
+  }
+
+  createTemplateFromUpload(body: {
+    code: string;
+    name: string;
+    documentTypeId?: string | null;
+    fileName: string;
+    content: string;
+  }): Observable<DocumentTemplateDetailDto> {
+    return this.http.post<DocumentTemplateDetailDto>(`${this.dataRoot}/document-templates/upload`, body);
+  }
+
+  createTemplateRuleBased(body: {
+    code: string;
+    name: string;
+    documentTypeId?: string | null;
+    description: string;
+    suggestedVariables?: string[];
+  }): Observable<DocumentTemplateDetailDto> {
+    return this.http.post<DocumentTemplateDetailDto>(`${this.dataRoot}/document-templates/rule-generate`, body);
+  }
+
+  updateTemplate(templateId: string, body: { name: string; documentTypeId?: string | null }): Observable<DocumentTemplateDetailDto> {
+    return this.http.put<DocumentTemplateDetailDto>(
+      `${this.dataRoot}/document-templates/${encodeURIComponent(templateId)}`,
+      body,
+    );
+  }
+
+  setTemplateStatus(templateId: string, isActive: boolean): Observable<DocumentTemplateDetailDto> {
+    return this.http.patch<DocumentTemplateDetailDto>(
+      `${this.dataRoot}/document-templates/${encodeURIComponent(templateId)}/status`,
+      { isActive },
+    );
+  }
+
+  createTemplateVersion(
+    templateId: string,
+    body: {
+      structuredContent: string;
+      status?: 'draft' | 'published' | 'archived' | string;
+      originalAssetUri?: string | null;
+      variables?: Array<{
+        name: string;
+        type: 'text' | 'date' | 'number' | string;
+        isRequired: boolean;
+        defaultValue?: string | null;
+        validationRule?: string | null;
+      }>;
+    },
+  ): Observable<TemplateVersionDto> {
+    return this.http.post<TemplateVersionDto>(
+      `${this.dataRoot}/document-templates/${encodeURIComponent(templateId)}/versions`,
+      body,
+    );
+  }
+
+  getTemplateVersions(templateId: string): Observable<TemplateVersionDto[]> {
+    return this.http.get<TemplateVersionDto[]>(`${this.dataRoot}/document-templates/${encodeURIComponent(templateId)}/versions`);
+  }
+
+  testRunTemplate(
+    templateId: string,
+    sampleData: Record<string, string>,
+  ): Observable<{ renderedContent: string; missingVariables: string[]; previewFileName: string }> {
+    return this.http.post<{ renderedContent: string; missingVariables: string[]; previewFileName: string }>(
+      `${this.dataRoot}/document-templates/${encodeURIComponent(templateId)}/test-run`,
+      { sampleData },
+    );
+  }
+
   generateFromDocumentTemplate(
     templateId: string,
-    body: { documentRequestId?: string | null; documentTypeId?: string | null } = {},
+    body: { documentRequestId?: string | null; documentTypeId?: string | null; variables?: Record<string, string> } = {},
   ): Observable<{ generatedDocumentId: string; fileName: string; storageUri: string; status: string }> {
     return this.http.post<{ generatedDocumentId: string; fileName: string; storageUri: string; status: string }>(
       `${this.dataRoot}/document-templates/${encodeURIComponent(templateId)}/generate`,
